@@ -1,6 +1,6 @@
 # Architecture
 
-The initial architecture is approved and partially implemented. CSV discovery, structural validation, record normalization, row-level validation, duplicate detection, and record classification are implemented; later pipeline stages remain planned. The architecture uses the existing modules and avoids unnecessary layers or global mutable state.
+The initial architecture is approved and partially implemented. CSV and XLSX discovery and structural loading, record normalization, row-level validation, duplicate detection, and record classification are implemented; later pipeline stages remain planned. The architecture uses the existing modules and avoids unnecessary layers or global mutable state.
 
 ## Processing Pipeline
 
@@ -39,6 +39,10 @@ A structural or operational failure stops successful publication and results in 
 - Enforce the comma-delimited CSV contract using strict `utf-8-sig` decoding, accepting UTF-8 with or without BOM and rejecting other encodings.
 - Validate CSV header names exactly and case-sensitively without silent normalization.
 - Classify XLSX worksheets by required-column presence, log skipped auxiliary worksheets, fail on partial schemas, and load complete schemas.
+- Read XLSX headers only from physical row 1 and validate them exactly without silent normalization.
+- Open XLSX workbooks with `read_only=False` and `data_only=False`, close them after success or failure, and surface predictable workbook errors structurally.
+- Preserve empty XLSX rows between records and reject populated columns with empty headers.
+- Retain formulas without evaluating them so row validation can reject formulas in required or extra data cells.
 - Fail a workbook that contains no usable data worksheet.
 - Treat required-column failures as structural source errors.
 - Reject input columns that collide with reserved traceability names.
@@ -59,6 +63,7 @@ A structural or operational failure stops successful publication and results in 
 - Accept canonical `YYYY-MM-DD` text and native Excel date or datetime values without guessing ambiguous text formats.
 - Normalize valid dates internally to `datetime.date`.
 - Parse finite canonical decimal amounts and normalize them to two places using `Decimal` and `ROUND_HALF_UP`.
+- Convert native XLSX integers exactly and floats through `Decimal(str(value))`, while rejecting booleans.
 - Return structured validation results rather than hiding failures.
 - Preserve all relevant validation errors for a record instead of stopping at the first error.
 - Keep row validation independent from structural source checks and report formatting.
@@ -99,11 +104,9 @@ An XLSX worksheet with none of the required columns is auxiliary: it is skipped 
 
 Structural and operational failures include missing input directories, no supported or usable sources, partial required schemas, reserved-column collisions, unreadable or malformed files, and failed report publication. They are logged clearly, prevent a successful run, and produce a non-zero exit status. They must not be converted into ordinary invalid rows or hidden behind an apparently complete or empty report.
 
-## Expected Dependencies
+## Dependencies
 
-- `pandas` for tabular loading, transformation, consolidation, and classification, with explicit safeguards for textual identifiers and decimal values.
-- `openpyxl` for native Excel values, multi-worksheet XLSX processing, and workbook output.
-- `pytest` for automated tests.
-- `pytest-cov` for optional coverage reporting.
+- `openpyxl` for native Excel values and multi-worksheet XLSX processing, and later workbook output.
+- `pytest` as a development dependency for automated tests.
 
-Use the standard library for paths, logging, `Decimal`, dataclasses, temporary files, and atomic replacement where appropriate. Dependencies must not be installed or added until implementation planning confirms them.
+The implemented loading and processing pipeline does not require `pandas`. Use the standard library for paths, logging, `Decimal`, dataclasses, temporary files, and atomic replacement where appropriate.
