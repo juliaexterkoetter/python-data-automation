@@ -257,3 +257,51 @@ Statuses used in this log are `proposed`, `accepted`, and `superseded`. Proposed
 - **Context:** Input-controlled text can be interpreted as executable spreadsheet formulas.
 - **Decision:** Safely export text beginning with formula-triggering characters such as `=`, `+`, `-`, or `@` while preserving its underlying value as much as reasonably possible.
 - **Consequences:** Formula-injection mitigation is required across required and extra textual columns.
+
+## D25 — XLSX Worksheet Classification
+
+- **Status:** accepted
+- **Date:** 2026-08-20
+- **Context:** Worksheet selection did not distinguish auxiliary content from a malformed data worksheet.
+- **Decision:** Ignore and log worksheets containing no required columns, fail structurally on partial required schemas, process complete schemas, and fail workbooks with no usable data worksheet.
+- **Consequences:** Auxiliary sheets are handled visibly while incomplete data sources and unusable workbooks cannot produce misleading output.
+
+## D26 — Monetary Input Precision
+
+- **Status:** accepted
+- **Date:** 2026-08-20
+- **Context:** The behavior of finite decimal inputs with more than two decimal places was undefined.
+- **Decision:** Accept excess precision, parse with `Decimal`, and normalize to two places using `ROUND_HALF_UP`.
+- **Consequences:** Excess precision alone is valid; values such as `1.005`, `12.999`, and `149.9` normalize to `1.01`, `13.00`, and `149.90`.
+
+## D27 — No Usable Input
+
+- **Status:** accepted
+- **Date:** 2026-08-20
+- **Context:** A successful empty report could falsely appear to represent a complete run.
+- **Decision:** Fail with non-zero status and publish no new final report when the input directory is missing, no supported files exist, or no usable data source is found.
+- **Consequences:** Version 1 cannot complete successfully with empty input.
+
+## D28 — Basic Email Validation
+
+- **Status:** accepted
+- **Date:** 2026-08-20
+- **Context:** Pragmatic email validation needed deterministic minimum boundaries.
+- **Decision:** For present emails, require one `@` between non-empty local and domain portions, no whitespace, and a plausible dotted domain; do not attempt RFC-complete validation.
+- **Consequences:** `julia@example.com` is valid, while `julia`, `julia@`, `@example.com`, `julia example.com`, and `julia@example` are invalid.
+
+## D29 — `source_row` Semantics
+
+- **Status:** accepted
+- **Date:** 2026-08-20
+- **Context:** Traceability requires a row value that maps directly to the physical source.
+- **Decision:** Use the physical 1-based row number including the header row; a first data record below a row-1 header has `source_row = 2`.
+- **Consequences:** Users can locate records directly in their source files.
+
+## D30 — Reserved Traceability Columns
+
+- **Status:** accepted
+- **Date:** 2026-08-20
+- **Context:** Input columns could collide with application-generated traceability metadata.
+- **Decision:** Reserve `source_file`, `source_sheet`, and `source_row`; any input collision is a structural source error.
+- **Consequences:** Client columns are never silently overwritten, renamed, or discarded.

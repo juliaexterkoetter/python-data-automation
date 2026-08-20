@@ -6,7 +6,8 @@ The initial architecture is approved but not implemented. It uses the existing m
 
 ```text
 discover CSV and XLSX sources
-    -> validate each source structure
+    -> fail if no supported source exists
+    -> classify XLSX worksheets and validate data-source structures
     -> load records and attach source metadata
     -> combine records across files and worksheets
     -> normalize approved fields
@@ -17,7 +18,7 @@ discover CSV and XLSX sources
     -> atomically replace the final report
 ```
 
-A structural or operational failure stops successful publication and results in a non-zero exit status. Version 1 does not publish partial results.
+A structural or operational failure stops successful publication and results in a non-zero exit status. Version 1 does not publish partial or empty successful reports.
 
 ## Module Responsibilities
 
@@ -33,22 +34,25 @@ A structural or operational failure stops successful publication and results in 
 ### `src/processor.py`
 
 - Discover supported files case-insensitively.
+- Fail when the input directory is missing, no supported file exists, or no usable data source is found.
 - Enforce the UTF-8 comma-delimited CSV contract.
-- Inspect and load every qualifying XLSX worksheet.
+- Classify XLSX worksheets by required-column presence, log skipped auxiliary worksheets, fail on partial schemas, and load complete schemas.
+- Fail a workbook that contains no usable data worksheet.
 - Treat required-column failures as structural source errors.
+- Reject input columns that collide with reserved traceability names.
 - Preserve extra columns.
-- Attach `source_file`, `source_sheet`, and `source_row` while loading.
+- Attach `source_file`, `source_sheet`, and physical 1-based `source_row` while loading.
 - Preserve `order_id` as text, including leading zeros.
 - Combine records across all successfully loaded sources.
 - Apply approved normalization transformations.
 - Identify every occurrence of repeated IDs across the combined dataset.
-- Calculate independent counts and the eligible paid total using decimal arithmetic.
+- Normalize finite decimal amounts to two places with `ROUND_HALF_UP`, then calculate independent counts and the eligible paid total using decimal arithmetic.
 
 ### `src/validator.py`
 
-- Apply required-value, email, amount, date, and status rules.
+- Apply required-value, explicitly bounded basic email, amount, date, and status rules.
 - Accept canonical `YYYY-MM-DD` text and native Excel date or datetime values without guessing ambiguous text formats.
-- Use decimal arithmetic, two decimal places, and `ROUND_HALF_UP` where rounding is required.
+- Accept excess decimal precision and normalize every valid amount to two places using `Decimal` and `ROUND_HALF_UP`.
 - Return structured validation results rather than hiding failures.
 - Preserve all relevant validation errors for a record instead of stopping at the first error.
 - Keep row validation independent from structural source checks and report formatting.
@@ -75,7 +79,9 @@ A small `dataclass` may represent the processing result and group valid records,
 
 ## Traceability
 
-`source_file`, `source_sheet`, and `source_row` are attached during loading and retained throughout processing. `source_sheet` is empty or null for CSV input. Worksheet names are preserved for XLSX records.
+`source_file`, `source_sheet`, and `source_row` are attached during loading and retained throughout processing. `source_sheet` is empty or null for CSV input. Worksheet names are preserved for XLSX records. `source_row` is the physical 1-based source row, including the header row, so a first data record below a row-1 header has value 2.
+
+The traceability names are reserved. A collision with an input column is a structural source error and must not be resolved by silently overwriting, renaming, or discarding client data.
 
 Record accounting must enforce the invariant that no loaded record disappears without classification or a documented error.
 
@@ -83,7 +89,9 @@ Record accounting must enforce the invariant that no loaded record disappears wi
 
 Row-level validation errors, such as a malformed email, unsupported textual date, negative amount, or missing required value, are accumulated on the record and reported in `Invalid Records`.
 
-Structural and operational failures include missing required columns, a worksheet that cannot satisfy the source contract, unreadable or malformed files, and failed report publication. They are logged clearly, prevent a successful run, and produce a non-zero exit status. They must not be converted into ordinary invalid rows or hidden behind an apparently complete report.
+An XLSX worksheet with none of the required columns is auxiliary: it is skipped with an explicit non-data log entry. A worksheet with some but not all required columns is a malformed data source. A complete schema is processed. A workbook without any complete-schema worksheet is structurally invalid.
+
+Structural and operational failures include missing input directories, no supported or usable sources, partial required schemas, reserved-column collisions, unreadable or malformed files, and failed report publication. They are logged clearly, prevent a successful run, and produce a non-zero exit status. They must not be converted into ordinary invalid rows or hidden behind an apparently complete or empty report.
 
 ## Expected Dependencies
 

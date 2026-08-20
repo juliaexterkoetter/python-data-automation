@@ -6,10 +6,10 @@ None.
 
 ## Planned
 
-1. Plan the first implementation increment against the approved rules and architecture.
+1. Plan the first implementation increment against the approved rules and architecture, including D25–D30.
 2. Configure the Python environment and required dependencies.
-3. Implement input discovery and structural source validation.
-4. Implement CSV and multi-worksheet XLSX loading with source metadata and preserved extra columns.
+3. Implement input discovery, no-usable-source failure, and structural source validation.
+4. Implement CSV and classified multi-worksheet XLSX loading with exact source metadata and preserved extra columns.
 5. Implement normalization.
 6. Implement row-level validation, including date, email, and decimal amount rules.
 7. Implement non-exclusive invalid and duplicate classification.
@@ -28,5 +28,6 @@ None.
 - Reframed project scope for a real, maintainable application.
 - Analyzed requirement ambiguities, reliability risks, and testing needs.
 - Established the permanent documentation structure.
-- Approved and documented business decisions D01–D24.
+- Approved and documented business decisions D01–D30.
 - Approved the initial module responsibility boundaries.
+- Resolved pre-merge ambiguities for XLSX worksheet classification, monetary precision, empty input, email validation, source-row semantics, and reserved traceability columns.

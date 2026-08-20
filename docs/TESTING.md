@@ -19,12 +19,13 @@ Tests have not been implemented yet. Commands below are placeholders until the P
 - Status trimming and lowercase conversion before validation.
 - Every valid status and unknown statuses.
 - Optional absent email, normalized valid email, and present malformed email.
+- Basic email boundaries: `julia@example.com` is valid, while `julia`, `julia@`, `@example.com`, `julia@@example.com`, `julia example.com`, and `julia@example` are invalid.
 - Canonical `YYYY-MM-DD` dates.
 - Rejection of ambiguous text such as `01/02/2026` and other unsupported date formats.
 - Native Excel date and datetime values.
 - Accepted canonical USD decimal inputs and rejected symbols or locale-dependent formats.
 - Decimal arithmetic without binary floating-point artifacts.
-- Two-decimal `ROUND_HALF_UP` behavior where rounding is required.
+- Excess input precision accepted and normalized with `Decimal` and `ROUND_HALF_UP`: `1.005` to `1.01`, `12.999` to `13.00`, and `149.9` to `149.90`.
 - Valid zero amounts and invalid negative amounts.
 - Multiple validation errors on one record.
 
@@ -56,13 +57,17 @@ Use temporary directories and small deterministic files to cover:
 - Rejection of unsupported CSV encoding, delimiter, missing header, and malformed input without guessing.
 - XLSX input containing native date cells.
 - Processing every worksheet with the required schema and preserving worksheet names.
-- A nonconforming worksheet causing a visible structural failure rather than silently yielding zero records.
+- A worksheet with no required columns skipped as auxiliary with an explicit log entry.
+- A worksheet with some but not all required columns causing structural failure.
+- A workbook with auxiliary worksheets but no usable data worksheet causing structural failure.
 - Missing required columns as structural errors.
+- Reserved traceability-column collisions causing structural errors without overwriting, renaming, or discarding input data.
 - Extra columns accepted, preserved through processing, and written to output.
 - Combined CSV and multi-worksheet XLSX input.
 - Corrupted, protected, empty, zero-byte, or unreadable sources causing non-zero execution status.
 - Failure of any source preventing publication of an apparently complete report.
 - `source_file`, `source_sheet`, and `source_row` attached correctly and retained in output datasets.
+- Physical 1-based `source_row` values including the header, with the first record below a row-1 header mapped to row 2.
 - Run-level timestamp not duplicated onto every record.
 - Workbook creation and read-back verification.
 - Required worksheet names, columns, classifications, and summary content.
@@ -70,6 +75,7 @@ Use temporary directories and small deterministic files to cover:
 - Simulated generation or replacement failure leaving the existing valid report unchanged.
 - Formula-injection payloads remaining non-executable after workbook read-back.
 - A complete successful end-to-end execution.
+- Missing input directory, no supported files, and no usable data source each causing non-zero status without creating a new final report.
 
 ## Regression Tests
 
@@ -83,15 +89,15 @@ Fixtures should be small, readable, and focused on one behavior where possible. 
 
 Test handling of:
 
-- No input directory or no supported files.
+- Missing input directory, no supported files, and no usable source.
 - UTF-8 byte order marks and malformed UTF-8.
 - Duplicate or blank headers.
 - Protected, empty, or structurally invalid workbooks.
 - IDs that differ only by case and IDs with leading or trailing whitespace.
 - Excel dates, datetimes, and invalid text dates.
-- Zero, negative, non-finite, over-precision, and very large monetary values.
+- Zero, negative, non-finite, over-precision, and very large monetary values, with over-precision normalized rather than rejected.
 - Unicode whitespace and invisible characters.
-- Collisions between extra-column names and internal metadata names.
+- Collisions between extra-column names and reserved traceability names, which must fail structurally.
 - Existing, locked, or unavailable output paths.
 - Spreadsheet formula payloads in required and extra textual columns.
 - Data volumes approaching workbook limits when an operational volume is defined.
