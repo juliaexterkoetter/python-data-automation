@@ -1,6 +1,6 @@
 # Architecture
 
-The initial architecture is approved but not implemented. It uses the existing modules and avoids unnecessary layers or global mutable state.
+The initial architecture is approved and partially implemented. The CSV discovery and structural-validation increment is implemented; later pipeline stages remain planned. The architecture uses the existing modules and avoids unnecessary layers or global mutable state.
 
 ## Processing Pipeline
 
@@ -34,8 +34,10 @@ A structural or operational failure stops successful publication and results in 
 ### `src/processor.py`
 
 - Discover supported files case-insensitively.
+- Discover only regular files directly inside the input directory, without recursion.
 - Fail when the input directory is missing, no supported file exists, or no usable data source is found.
-- Enforce the UTF-8 comma-delimited CSV contract.
+- Enforce the comma-delimited CSV contract using strict `utf-8-sig` decoding, accepting UTF-8 with or without BOM and rejecting other encodings.
+- Validate CSV header names exactly and case-sensitively without silent normalization.
 - Classify XLSX worksheets by required-column presence, log skipped auxiliary worksheets, fail on partial schemas, and load complete schemas.
 - Fail a workbook that contains no usable data worksheet.
 - Treat required-column failures as structural source errors.

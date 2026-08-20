@@ -50,7 +50,11 @@ Zero is valid. Negative amounts are invalid. Refunds are represented by the `ref
 
 ### CSV
 
-Version 1 CSV files use UTF-8, contain a header, and use a comma delimiter. File extensions are matched case-insensitively. The application must not silently guess another encoding or delimiter.
+Version 1 CSV files use UTF-8, contain a header, and use a comma delimiter. UTF-8 with BOM is accepted and read with `utf-8-sig` so the BOM does not become part of the first header name. Other encodings remain invalid. The application must not silently guess another encoding or delimiter.
+
+File extensions are matched case-insensitively. Discovery is not recursive: only regular files directly inside `data/input/` are considered, and files in subdirectories are ignored.
+
+Header names are validated exactly and case-sensitively. The application must not trim, lowercase, rename, correct, or otherwise normalize them silently.
 
 ### XLSX
 

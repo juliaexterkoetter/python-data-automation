@@ -1,6 +1,18 @@
 # Testing Strategy
 
-Tests have not been implemented yet. Commands below are placeholders until the Python environment and test configuration are established.
+Tests are implemented incrementally with each feature. CSV discovery and structural loading are currently covered; tests for later pipeline stages remain planned.
+
+## Implemented CSV Coverage
+
+- Missing input directory and absence of supported CSV files.
+- Case-insensitive, non-recursive discovery of regular `.csv` files.
+- UTF-8 and UTF-8 BOM input, plus rejection of invalid UTF-8 bytes.
+- Required comma delimiter, header presence, exact case-sensitive header names, duplicate headers, and required columns.
+- Reserved traceability-column collisions and preservation of extra columns.
+- Textual `order_id` values with leading zeros preserved.
+- `source_file`, null `source_sheet`, and physical 1-based `source_row`, including multiline records.
+- Complete-operation failure when any CSV source is structurally invalid.
+- Logging and zero/non-zero exit-status coordination.
 
 ## Core Invariants
 
@@ -102,13 +114,11 @@ Test handling of:
 - Spreadsheet formula payloads in required and extra textual columns.
 - Data volumes approaching workbook limits when an operational volume is defined.
 
-## Placeholder Commands
+## Test Commands
 
 ```bash
-python -m pytest
-python -m pytest tests/test_validator.py
-python -m pytest tests/test_processor.py
-python -m pytest --cov=src --cov-report=term-missing
+.venv/bin/python -m pytest
+.venv/bin/python -m pytest tests/test_processor.py tests/test_main.py
 ```
 
-These commands must be confirmed after dependencies and test configuration are added.
+The complete-suite command is confirmed for the current development environment. Additional commands will be documented when later test modules and coverage tooling are added.
