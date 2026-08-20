@@ -70,6 +70,16 @@ Classify each worksheet from its header columns:
 
 Preserve each processed worksheet name in source metadata. A workbook containing no usable data worksheet causes a structural failure.
 
+The header must be on physical row 1 and is compared exactly and case-sensitively without trimming or correction. Duplicate non-empty names are structural errors. An empty header over a populated column is also a structural error; only trailing empty header cells beyond the effectively used data may be ignored.
+
+A complete-schema worksheet is usable only when it contains at least one data record. Preserve empty physical rows between records so their row numbers and subsequent row-level validation remain traceable.
+
+XLSX discovery is non-recursive, case-insensitive by extension, limited to regular files directly inside the input directory, and does not follow symlinks.
+
+Native numeric `order_id` values are invalid and are not converted to text. Native integer amounts are converted exactly to `Decimal`; native float amounts use `Decimal(str(value))`, never `Decimal(float_value)`. Boolean values are invalid in every business field.
+
+Open XLSX input with `read_only=False` and `data_only=False`. Formulas are never executed or interpreted. A formula in a header is a structural error; a formula in any required or extra data cell makes that record invalid while retaining the expression for traceability.
+
 ## Traceability and Auditability
 
 Attach `source_file`, `source_sheet`, and `source_row` to every loaded record as early as possible. `source_sheet` may be empty or null for CSV records. Keep this metadata associated with the record throughout processing.

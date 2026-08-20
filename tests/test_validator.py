@@ -5,7 +5,7 @@ from decimal import Decimal
 
 import pytest
 
-from src.validator import normalize_and_validate_record
+from src.validator import FormulaValue, normalize_and_validate_record
 
 
 def valid_record(**overrides: object) -> dict[str, object]:
@@ -179,6 +179,44 @@ def test_normalizes_very_large_decimal_without_float_conversion() -> None:
 
 
 @pytest.mark.parametrize(
+    ("amount", "expected"),
+    [
+        (10, Decimal("10.00")),
+        (10.005, Decimal("10.01")),
+        (0.001, Decimal("0.00")),
+        (1e100, Decimal("1" + ("0" * 100) + ".00")),
+        (1e-100, Decimal("0.00")),
+    ],
+)
+def test_accepts_native_excel_numeric_amounts(
+    amount: int | float,
+    expected: Decimal,
+) -> None:
+    result = normalize_and_validate_record(valid_record(amount=amount))
+
+    assert result.errors == ()
+    assert result.record["amount"] == expected
+
+
+def test_rejects_negative_native_excel_amount_before_rounding() -> None:
+    result = normalize_and_validate_record(valid_record(amount=-0.001))
+
+    assert ("amount", "negative_amount") in {
+        (error.field, error.code) for error in result.errors
+    }
+    assert result.record["amount"] == Decimal("-0.00")
+
+
+def test_rejects_negative_scientific_native_excel_amount() -> None:
+    result = normalize_and_validate_record(valid_record(amount=-1e100))
+
+    assert ("amount", "negative_amount") in {
+        (error.field, error.code) for error in result.errors
+    }
+    assert result.record["amount"] == Decimal("-1" + ("0" * 100) + ".00")
+
+
+@pytest.mark.parametrize(
     "amount",
     ["$10.00", "10,00", "1e2", "NaN", "Infinity", "+10.00", "10."],
 )
@@ -189,6 +227,35 @@ def test_rejects_noncanonical_or_nonfinite_amounts(amount: str) -> None:
 @pytest.mark.parametrize("amount", [Decimal("NaN"), Decimal("Infinity")])
 def test_rejects_nonfinite_decimal_amounts(amount: Decimal) -> None:
     assert ("amount", "invalid_amount") in error_codes(amount=amount)
+
+
+@pytest.mark.parametrize(
+    ("field", "expected_code"),
+    [
+        ("order_id", "invalid_type"),
+        ("customer_name", "invalid_type"),
+        ("email", "invalid_email"),
+        ("status", "invalid_status"),
+        ("amount", "invalid_amount"),
+        ("order_date", "invalid_date"),
+    ],
+)
+def test_rejects_boolean_business_values(field: str, expected_code: str) -> None:
+    result = normalize_and_validate_record(valid_record(**{field: True}))
+
+    assert [(error.field, error.code) for error in result.errors] == [
+        (field, expected_code)
+    ]
+
+
+def test_formula_in_extra_column_makes_record_invalid_and_preserves_expression() -> None:
+    formula = FormulaValue("=SUM(A1:A2)")
+    result = normalize_and_validate_record(valid_record(extra_value=formula))
+
+    assert ("extra_value", "formula_not_allowed") in {
+        (error.field, error.code) for error in result.errors
+    }
+    assert result.record["extra_value"] is formula
 
 
 @pytest.mark.parametrize(

@@ -7,8 +7,8 @@ from pathlib import Path
 
 from src.processor import (
     StructuralInputError,
-    discover_csv_files,
-    load_csv_files,
+    discover_supported_files,
+    load_supported_files,
     process_records,
 )
 
@@ -18,15 +18,18 @@ DEFAULT_INPUT_DIR = Path("data/input")
 
 
 def run(input_dir: Path = DEFAULT_INPUT_DIR) -> int:
-    """Discover, load, and process CSV input sources."""
+    """Discover, load, and process supported input sources."""
     try:
-        csv_files = discover_csv_files(input_dir)
-        LOGGER.info("Discovered %d CSV input file(s).", len(csv_files))
-        records = load_csv_files(csv_files)
+        source_files = discover_supported_files(input_dir)
+        csv_count = sum(path.suffix.lower() == ".csv" for path in source_files)
+        xlsx_count = sum(path.suffix.lower() == ".xlsx" for path in source_files)
+        LOGGER.info("Discovered %d CSV input file(s).", csv_count)
+        LOGGER.info("Discovered %d XLSX input file(s).", xlsx_count)
+        records = load_supported_files(source_files)
         LOGGER.info(
-            "Successfully loaded %d record(s) from %d CSV file(s).",
+            "Successfully loaded %d record(s) from %d input file(s).",
             len(records),
-            len(csv_files),
+            len(source_files),
         )
         result = process_records(records)
         LOGGER.info(

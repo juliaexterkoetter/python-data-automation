@@ -353,3 +353,91 @@ Statuses used in this log are `proposed`, `accepted`, and `superseded`. Proposed
 - **Context:** External whitespace around otherwise canonical monetary and date values should not create false validation failures.
 - **Decision:** Remove leading and trailing whitespace from textual `amount` and `order_date` values before parsing. Whitespace-only values are missing. Do not correct or guess any other formatting.
 - **Consequences:** Values such as `" 10.00 "` and `" 2026-08-20 "` are accepted after trimming, while currency symbols, localized decimal separators, ambiguous dates, and non-canonical date separators remain invalid.
+
+## D37 — XLSX Header Row
+
+- **Status:** accepted
+- **Date:** 2026-08-20
+- **Context:** Deterministic worksheet inspection requires a fixed header location.
+- **Decision:** Require every candidate XLSX worksheet header on physical row 1; do not search later rows for a header.
+- **Consequences:** Required columns located only below row 1 do not satisfy the worksheet schema.
+
+## D38 — XLSX Header Comparison
+
+- **Status:** accepted
+- **Date:** 2026-08-20
+- **Context:** Silent header normalization can hide source defects and change column meaning.
+- **Decision:** Compare XLSX header names exactly and case-sensitively without trimming, correcting, or normalizing them.
+- **Consequences:** XLSX and CSV use the same exact header-name contract.
+
+## D39 — Empty and Duplicate XLSX Headers
+
+- **Status:** accepted
+- **Date:** 2026-08-20
+- **Context:** Data under an unnamed column cannot be preserved reliably in a named record mapping.
+- **Decision:** Fail structurally on duplicate non-empty header names and on an empty header cell whose column contains data. Ignore empty header cells after the last effectively used column.
+- **Consequences:** No populated column is silently discarded because its header is empty.
+
+## D40 — XLSX Worksheet Without Records
+
+- **Status:** accepted
+- **Date:** 2026-08-20
+- **Context:** A complete header alone does not provide a usable data source.
+- **Decision:** A worksheet counts as usable only when it has the complete required schema and at least one data record.
+- **Consequences:** A workbook with no complete-schema worksheet containing records fails structurally.
+
+## D41 — Empty XLSX Data Rows
+
+- **Status:** accepted
+- **Date:** 2026-08-20
+- **Context:** Removing empty rows between records would break record accounting and physical traceability.
+- **Decision:** Preserve physically present empty data rows between records and retain their physical `source_row` values.
+- **Consequences:** Empty intermediate rows proceed to row-level validation and may be classified as invalid.
+
+## D42 — XLSX Discovery
+
+- **Status:** accepted
+- **Date:** 2026-08-20
+- **Context:** XLSX discovery needs the same bounded and safe filesystem policy as CSV discovery.
+- **Decision:** Match `.xlsx` case-insensitively, discover only regular files directly inside the input directory, do not recurse, and ignore symlinks without resolving them.
+- **Consequences:** CSV and XLSX share one deterministic discovery boundary.
+
+## D43 — Numeric XLSX Order IDs
+
+- **Status:** accepted
+- **Date:** 2026-08-20
+- **Context:** Converting native Excel numbers into textual identifiers could alter identity and cannot restore zeros already removed by Excel.
+- **Decision:** Treat native numeric XLSX `order_id` values as row-level validation errors without coercing them to text or reconstructing leading zeros.
+- **Consequences:** Only textual identifiers receive the existing trim, case-preservation, and leading-zero behavior.
+
+## D44 — Native XLSX Monetary Values
+
+- **Status:** accepted
+- **Date:** 2026-08-20
+- **Context:** Native Excel monetary cells are commonly delivered as Python integers or floats and need deterministic decimal conversion.
+- **Decision:** Reject booleans, convert integers exactly with `Decimal`, convert floats with `Decimal(str(value))`, never use `Decimal(float_value)`, and then apply the existing sign, finiteness, precision, and `ROUND_HALF_UP` rules.
+- **Consequences:** XLSX and textual amounts share one monetary validation and normalization policy.
+
+## D45 — Boolean Business Values
+
+- **Status:** accepted
+- **Date:** 2026-08-20
+- **Context:** Python booleans are integer subclasses but are not valid business values for the sales fields.
+- **Decision:** Treat booleans in `order_id`, `customer_name`, `email`, `status`, `amount`, and `order_date` as row-level validation errors.
+- **Consequences:** Boolean cells are never accepted through implicit numeric or textual coercion.
+
+## D46 — XLSX Input Formulas
+
+- **Status:** accepted
+- **Date:** 2026-08-20
+- **Context:** Cached formula results may be stale or missing, and the application must not execute or interpret formulas.
+- **Decision:** Open workbooks with `data_only=False`; fail structurally on formulas in headers and mark a record invalid when any required or extra data cell contains a formula. Preserve the expression for traceability without evaluating it or using a cached value.
+- **Consequences:** A data formula does not fail the whole workbook, but its record cannot be valid.
+
+## D47 — XLSX Workbook Opening Mode
+
+- **Status:** accepted
+- **Date:** 2026-08-20
+- **Context:** Version 1 prioritizes deterministic behavior for modest workbooks over streaming optimizations that rely on declared worksheet dimensions.
+- **Decision:** Open XLSX workbooks with `read_only=False` in Version 1 and do not introduce arbitrary size limits in this increment.
+- **Consequences:** Very large workbooks remain a documented operational memory risk.

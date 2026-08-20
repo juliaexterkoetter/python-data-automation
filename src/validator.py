@@ -25,6 +25,13 @@ class ValidationError:
 
 
 @dataclass(frozen=True)
+class FormulaValue:
+    """An unevaluated XLSX formula retained for traceability."""
+
+    expression: str
+
+
+@dataclass(frozen=True)
 class RecordValidationResult:
     """A normalized record and every validation error found in it."""
 
@@ -87,7 +94,11 @@ def _normalize_order_date(value: object) -> tuple[object, ValidationError | None
 
 
 def _quantize_amount(value: Decimal) -> Decimal:
-    precision = max(28, len(value.as_tuple().digits) + 2)
+    precision = max(
+        28,
+        len(value.as_tuple().digits),
+        value.adjusted() + 3,
+    )
     with localcontext() as context:
         context.prec = precision
         return value.quantize(DECIMAL_QUANTUM, rounding=ROUND_HALF_UP)
@@ -96,6 +107,13 @@ def _quantize_amount(value: Decimal) -> Decimal:
 def _normalize_amount(value: object) -> tuple[object, ValidationError | None]:
     if value is None:
         return None, _required_error("amount")
+
+    if isinstance(value, bool):
+        return value, ValidationError(
+            "amount",
+            "invalid_amount",
+            "amount must use canonical decimal notation",
+        )
 
     if isinstance(value, str):
         normalized: object = value.strip()
@@ -111,6 +129,12 @@ def _normalize_amount(value: object) -> tuple[object, ValidationError | None]:
     elif isinstance(value, Decimal):
         normalized = value
         decimal_input = value
+    elif isinstance(value, int):
+        normalized = value
+        decimal_input = Decimal(value)
+    elif isinstance(value, float):
+        normalized = value
+        decimal_input = Decimal(str(value))
     else:
         return value, ValidationError(
             "amount",
@@ -161,7 +185,15 @@ def normalize_and_validate_record(
 ) -> RecordValidationResult:
     """Normalize approved fields and accumulate all row-level errors."""
     record = dict(raw_record)
-    errors: list[ValidationError] = []
+    errors = [
+        ValidationError(
+            field,
+            "formula_not_allowed",
+            f"{field} must not contain a formula",
+        )
+        for field, value in record.items()
+        if isinstance(value, FormulaValue)
+    ]
 
     record["order_id"] = _normalize_text(record.get("order_id"))
     if _is_missing(record["order_id"]):

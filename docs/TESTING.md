@@ -1,6 +1,6 @@
 # Testing Strategy
 
-Tests are implemented incrementally with each feature. CSV discovery, structural loading, record normalization, validation, duplicate detection, and classification are currently covered; tests for later pipeline stages remain planned.
+Tests are implemented incrementally with each feature. CSV and XLSX discovery and structural loading, record normalization, validation, duplicate detection, and classification are currently covered; tests for later pipeline stages remain planned.
 
 ## Implemented CSV Coverage
 
@@ -24,6 +24,19 @@ Tests are implemented incrementally with each feature. CSV discovery, structural
 - Global, case-sensitive duplicate detection within and across CSV files, excluding missing normalized IDs.
 - Classification of every repeated-ID occurrence, invalid-and-duplicate overlap, and valid-record eligibility.
 - Preservation of record order, source metadata, extra columns, and complete record accounting.
+
+## Implemented XLSX Coverage
+
+- Case-insensitive, non-recursive discovery of regular `.xlsx` files without following symlinks.
+- Deterministic mixed CSV and XLSX discovery and loading.
+- Physical row-1 exact headers, duplicate headers, populated empty-header columns, required columns, reserved columns, and extra columns.
+- Auxiliary, partial-schema, complete-schema, header-only, empty, and multiple worksheets according to the approved classification policy.
+- Explicit auxiliary-sheet logging and workbook failure when no usable worksheet exists.
+- Physical `source_row`, exact `source_sheet`, source filename, and preservation of empty intermediate rows.
+- Native dates, datetimes, integers, floats, booleans, numeric identifiers, and shared record validation.
+- Formula rejection in headers and record-level rejection in required and extra data cells without cached values.
+- Corrupted workbook failures with preserved causes and complete-operation failure across mixed sources.
+- Duplicate detection across CSV and XLSX records.
 
 ## Core Invariants
 
@@ -129,7 +142,7 @@ Test handling of:
 
 ```bash
 .venv/bin/python -m pytest
-.venv/bin/python -m pytest tests/test_validator.py tests/test_processor.py tests/test_main.py
+.venv/bin/python -m pytest tests/test_validator.py tests/test_processor.py tests/test_xlsx_processor.py tests/test_main.py
 ```
 
 The complete-suite command is confirmed for the current development environment. Additional commands will be documented when later test modules and coverage tooling are added.
