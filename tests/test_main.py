@@ -23,6 +23,7 @@ def test_run_returns_zero_and_logs_success(tmp_path: Path, caplog) -> None:
     assert status == 0
     assert "Discovered 1 CSV input file(s)." in caplog.text
     assert "Successfully loaded 1 record(s)" in caplog.text
+    assert "Processed 1 record(s): 1 valid, 0 invalid, 0 duplicate." in caplog.text
 
 
 def test_run_returns_nonzero_and_logs_structural_failure(
@@ -96,3 +97,34 @@ def test_run_does_not_mask_unexpected_programming_errors(
 
     with pytest.raises(RuntimeError, match="unexpected bug"):
         run(tmp_path)
+
+
+def test_run_succeeds_and_logs_record_level_validation_failures(
+    tmp_path: Path,
+    caplog,
+) -> None:
+    (tmp_path / "orders.csv").write_text(
+        "order_id,customer_name,email,order_date,amount,status\n"
+        ",,invalid,01/02/2026,-1.00,unknown\n",
+        encoding="utf-8",
+    )
+
+    with caplog.at_level(logging.INFO):
+        status = run(tmp_path)
+
+    assert status == 0
+    assert "Processed 1 record(s): 0 valid, 1 invalid, 0 duplicate." in caplog.text
+
+
+def test_run_classifies_duplicates_across_multiple_csv_files(
+    tmp_path: Path,
+    caplog,
+) -> None:
+    (tmp_path / "a.csv").write_text(VALID_CSV, encoding="utf-8")
+    (tmp_path / "b.csv").write_text(VALID_CSV, encoding="utf-8")
+
+    with caplog.at_level(logging.INFO):
+        status = run(tmp_path)
+
+    assert status == 0
+    assert "Processed 2 record(s): 0 valid, 0 invalid, 2 duplicate." in caplog.text

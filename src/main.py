@@ -5,7 +5,12 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from src.processor import StructuralInputError, discover_csv_files, load_csv_files
+from src.processor import (
+    StructuralInputError,
+    discover_csv_files,
+    load_csv_files,
+    process_records,
+)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -13,7 +18,7 @@ DEFAULT_INPUT_DIR = Path("data/input")
 
 
 def run(input_dir: Path = DEFAULT_INPUT_DIR) -> int:
-    """Discover and structurally load CSV input sources."""
+    """Discover, load, and process CSV input sources."""
     try:
         csv_files = discover_csv_files(input_dir)
         LOGGER.info("Discovered %d CSV input file(s).", len(csv_files))
@@ -22,6 +27,14 @@ def run(input_dir: Path = DEFAULT_INPUT_DIR) -> int:
             "Successfully loaded %d record(s) from %d CSV file(s).",
             len(records),
             len(csv_files),
+        )
+        result = process_records(records)
+        LOGGER.info(
+            "Processed %d record(s): %d valid, %d invalid, %d duplicate.",
+            len(result.records),
+            len(result.valid_records),
+            len(result.invalid_records),
+            len(result.duplicate_records),
         )
     except StructuralInputError as error:
         LOGGER.error("Input processing failed: %s", error)
