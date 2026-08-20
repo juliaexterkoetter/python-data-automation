@@ -4,7 +4,7 @@ A Python application for consolidating, validating, cleaning, and reporting sale
 
 ## Development Status
 
-The initial requirements, business rules, and architecture have been approved and documented. Application functionality has not been implemented; implementation planning is the next step.
+The initial requirements, business rules, and architecture have been approved and documented. The first functional increment implements CSV discovery and structural input validation; later processing and reporting stages remain planned.
 
 ## Documentation
 

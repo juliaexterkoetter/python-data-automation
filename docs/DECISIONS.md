@@ -305,3 +305,27 @@ Statuses used in this log are `proposed`, `accepted`, and `superseded`. Proposed
 - **Context:** Input columns could collide with application-generated traceability metadata.
 - **Decision:** Reserve `source_file`, `source_sheet`, and `source_row`; any input collision is a structural source error.
 - **Consequences:** Client columns are never silently overwritten, renamed, or discarded.
+
+## D31 — UTF-8 BOM
+
+- **Status:** accepted
+- **Date:** 2026-08-20
+- **Context:** A UTF-8 BOM could otherwise become part of the first CSV header name.
+- **Decision:** Accept UTF-8 CSV files with or without BOM by reading them with `utf-8-sig`; reject other encodings.
+- **Consequences:** A BOM is removed safely without silently broadening the encoding contract.
+
+## D32 — CSV Header Names
+
+- **Status:** accepted
+- **Date:** 2026-08-20
+- **Context:** Silent header correction could hide structural defects or change client data meaning.
+- **Decision:** Validate CSV header names exactly and case-sensitively without trimming, lowercasing, renaming, or correcting them.
+- **Consequences:** Only exact required names satisfy the schema; variants such as `Order_ID` and `ORDER_ID` do not.
+
+## D33 — Input Directory Recursion
+
+- **Status:** accepted
+- **Date:** 2026-08-20
+- **Context:** The Version 1 discovery boundary needed an explicit rule for nested directories.
+- **Decision:** Discover only regular CSV files directly inside `data/input/`; do not recurse into subdirectories.
+- **Consequences:** Nested files are ignored and discovery remains deterministic and narrowly scoped.
