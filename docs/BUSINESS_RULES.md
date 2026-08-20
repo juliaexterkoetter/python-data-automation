@@ -16,6 +16,8 @@ Extra input columns are allowed and must be preserved. Missing required columns 
 
 If an `order_id` occurs more than once across the complete loaded dataset, every occurrence is a duplicate. The application must not arbitrarily select one occurrence as valid.
 
+Duplicate detection considers only normalized, non-empty `order_id` values. Records with a missing normalized ID are invalid but are not duplicates solely because other records also have a missing ID.
+
 Duplicate and invalid classifications are not mutually exclusive. A record may appear in both the `Duplicates` and `Invalid Records` worksheets.
 
 Duplicate count is an independent summary metric. Because invalid and duplicate classifications may overlap, the application must not imply that `total_records = valid_records + invalid_records + duplicate_records`.
@@ -38,11 +40,13 @@ Remove leading and trailing whitespace and convert the value to lowercase before
 
 ### Order Date
 
-The canonical textual format is `YYYY-MM-DD`. Native Excel date and datetime cell values are also accepted. Ambiguous or unsupported textual formats are invalid and must not be guessed.
+Remove leading and trailing whitespace from textual values before parsing. Whitespace-only values are missing. The canonical textual format is `YYYY-MM-DD`. Native Excel date and datetime cell values are also accepted. Ambiguous or unsupported textual formats are invalid and must not be guessed.
+
+Represent every valid normalized order date internally as `datetime.date`. Normalize accepted datetime values to their date component. External formatting belongs to the export stage.
 
 ### Amount
 
-Version 1 uses USD and canonical decimal notation without currency symbols or locale-dependent formatting. Finite decimal inputs may contain more than two decimal places. Parse them directly as `Decimal` and normalize every valid amount to two decimal places using `ROUND_HALF_UP`. Excess decimal precision alone does not make a record invalid. For example, `1.005` becomes `1.01`, `12.999` becomes `13.00`, and `149.9` becomes `149.90`.
+Version 1 uses USD and canonical decimal notation without currency symbols or locale-dependent formatting. Remove leading and trailing whitespace from textual values before parsing; whitespace-only values are missing. Finite decimal inputs may contain more than two decimal places. Parse them directly as `Decimal` and normalize every valid amount to two decimal places using `ROUND_HALF_UP`. Excess decimal precision alone does not make a record invalid. For example, `1.005` becomes `1.01`, `12.999` becomes `13.00`, and `149.9` becomes `149.90`.
 
 Zero is valid. Negative amounts are invalid. Refunds are represented by the `refunded` status rather than negative amounts. Invalid amounts must not crash processing and must make the affected record invalid.
 

@@ -1,6 +1,6 @@
 # Testing Strategy
 
-Tests are implemented incrementally with each feature. CSV discovery and structural loading are currently covered; tests for later pipeline stages remain planned.
+Tests are implemented incrementally with each feature. CSV discovery, structural loading, record normalization, validation, duplicate detection, and classification are currently covered; tests for later pipeline stages remain planned.
 
 ## Implemented CSV Coverage
 
@@ -13,6 +13,17 @@ Tests are implemented incrementally with each feature. CSV discovery and structu
 - `source_file`, null `source_sheet`, and physical 1-based `source_row`, including multiline records.
 - Complete-operation failure when any CSV source is structurally invalid.
 - Logging and zero/non-zero exit-status coordination.
+
+## Implemented Record-Processing Coverage
+
+- Field-specific trimming, case handling, required values, and preservation of extra columns and traceability metadata.
+- Pragmatic optional-email validation and all accepted status values.
+- Canonical textual dates, native date and datetime values, internal `datetime.date` normalization, and rejection of unsupported formats.
+- Canonical decimal parsing, `Decimal` representation, `ROUND_HALF_UP`, excess precision, zero, negatives, non-finite values, and very large amounts.
+- Multiple validation errors accumulated on one record without aborting the run.
+- Global, case-sensitive duplicate detection within and across CSV files, excluding missing normalized IDs.
+- Classification of every repeated-ID occurrence, invalid-and-duplicate overlap, and valid-record eligibility.
+- Preservation of record order, source metadata, extra columns, and complete record accounting.
 
 ## Core Invariants
 
@@ -118,7 +129,7 @@ Test handling of:
 
 ```bash
 .venv/bin/python -m pytest
-.venv/bin/python -m pytest tests/test_processor.py tests/test_main.py
+.venv/bin/python -m pytest tests/test_validator.py tests/test_processor.py tests/test_main.py
 ```
 
 The complete-suite command is confirmed for the current development environment. Additional commands will be documented when later test modules and coverage tooling are added.

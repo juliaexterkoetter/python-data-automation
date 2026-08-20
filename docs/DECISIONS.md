@@ -329,3 +329,27 @@ Statuses used in this log are `proposed`, `accepted`, and `superseded`. Proposed
 - **Context:** The Version 1 discovery boundary needed an explicit rule for nested directories.
 - **Decision:** Discover only regular CSV files directly inside `data/input/`; do not recurse into subdirectories.
 - **Consequences:** Nested files are ignored and discovery remains deterministic and narrowly scoped.
+
+## D34 — Missing Order IDs and Duplicate Detection
+
+- **Status:** accepted
+- **Date:** 2026-08-20
+- **Context:** Multiple records without an `order_id` do not provide evidence that they represent the same order.
+- **Decision:** Treat a missing normalized `order_id` as a row-level validation error, but exclude missing IDs from duplicate detection. Compare only non-empty normalized IDs.
+- **Consequences:** Records with missing IDs are invalid but are not duplicates solely because other records also lack an ID.
+
+## D35 — Normalized Order Date Representation
+
+- **Status:** accepted
+- **Date:** 2026-08-20
+- **Context:** Processing needs one unambiguous internal representation for accepted textual, date, and datetime values.
+- **Decision:** Represent every valid normalized `order_date` internally as `datetime.date`. Parse canonical text into a date and normalize an accepted `datetime.datetime` to its date component.
+- **Consequences:** External date formatting remains the responsibility of the future export stage.
+
+## D36 — Amount and Order Date Whitespace
+
+- **Status:** accepted
+- **Date:** 2026-08-20
+- **Context:** External whitespace around otherwise canonical monetary and date values should not create false validation failures.
+- **Decision:** Remove leading and trailing whitespace from textual `amount` and `order_date` values before parsing. Whitespace-only values are missing. Do not correct or guess any other formatting.
+- **Consequences:** Values such as `" 10.00 "` and `" 2026-08-20 "` are accepted after trimming, while currency symbols, localized decimal separators, ambiguous dates, and non-canonical date separators remain invalid.

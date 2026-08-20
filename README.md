@@ -4,7 +4,7 @@ A Python application for consolidating, validating, cleaning, and reporting sale
 
 ## Development Status
 
-The initial requirements, business rules, and architecture have been approved and documented. The first functional increment implements CSV discovery and structural input validation; later processing and reporting stages remain planned.
+The initial requirements, business rules, and architecture have been approved and documented. CSV discovery, structural input validation, record normalization, row-level validation, duplicate detection, and record classification are implemented; XLSX input, summary calculation, and report generation remain planned.
 
 ## Documentation
 

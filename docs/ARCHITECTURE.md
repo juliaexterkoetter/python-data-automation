@@ -1,6 +1,6 @@
 # Architecture
 
-The initial architecture is approved and partially implemented. The CSV discovery and structural-validation increment is implemented; later pipeline stages remain planned. The architecture uses the existing modules and avoids unnecessary layers or global mutable state.
+The initial architecture is approved and partially implemented. CSV discovery, structural validation, record normalization, row-level validation, duplicate detection, and record classification are implemented; later pipeline stages remain planned. The architecture uses the existing modules and avoids unnecessary layers or global mutable state.
 
 ## Processing Pipeline
 
@@ -46,15 +46,19 @@ A structural or operational failure stops successful publication and results in 
 - Attach `source_file`, `source_sheet`, and physical 1-based `source_row` while loading.
 - Preserve `order_id` as text, including leading zeros.
 - Combine records across all successfully loaded sources.
-- Apply approved normalization transformations.
+- Coordinate record normalization and validation without duplicating field rules.
 - Identify every occurrence of repeated IDs across the combined dataset.
-- Normalize finite decimal amounts to two places with `ROUND_HALF_UP`, then calculate independent counts and the eligible paid total using decimal arithmetic.
+- Exclude missing normalized IDs from duplicate detection.
+- Produce explicit valid, invalid, and duplicate classifications while preserving overlap and record order.
 
 ### `src/validator.py`
 
+- Own the approved field-normalization and row-validation rules.
+- Trim approved textual fields and preserve the required capitalization and identifier semantics.
 - Apply required-value, explicitly bounded basic email, amount, date, and status rules.
 - Accept canonical `YYYY-MM-DD` text and native Excel date or datetime values without guessing ambiguous text formats.
-- Accept excess decimal precision and normalize every valid amount to two places using `Decimal` and `ROUND_HALF_UP`.
+- Normalize valid dates internally to `datetime.date`.
+- Parse finite canonical decimal amounts and normalize them to two places using `Decimal` and `ROUND_HALF_UP`.
 - Return structured validation results rather than hiding failures.
 - Preserve all relevant validation errors for a record instead of stopping at the first error.
 - Keep row validation independent from structural source checks and report formatting.
@@ -77,7 +81,7 @@ Invalid and duplicate are independent attributes. A record may belong to both re
 
 Extra input columns remain associated with their records through normal output. Normalized values are the normal processing and report values; full copies of original fields are not required because source metadata identifies the original record.
 
-A small `dataclass` may represent the processing result and group valid records, invalid records, duplicates, summary values, source errors, and run metadata. The processing timestamp belongs to run metadata rather than individual rows.
+Small dataclasses represent validation errors, processed records, and the processing result. Valid, invalid, and duplicate projections reference the same processed records so overlapping classifications remain consistent. Future summary values, source errors, and run metadata can extend the result when their pipeline stages are implemented. The processing timestamp belongs to run metadata rather than individual rows.
 
 ## Traceability
 

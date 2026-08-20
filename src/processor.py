@@ -3,9 +3,13 @@
 from __future__ import annotations
 
 import csv
+from collections import Counter
 from collections.abc import Sequence
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TypeAlias
+
+from src.validator import ValidationError, normalize_and_validate_record
 
 
 REQUIRED_COLUMNS = frozenset(
@@ -17,7 +21,34 @@ RESERVED_TRACEABILITY_COLUMNS = frozenset(
 SUPPORTED_CSV_SUFFIX = ".csv"
 
 CsvValue: TypeAlias = str | None
-LoadedRecord: TypeAlias = dict[str, CsvValue | int]
+LoadedRecord: TypeAlias = dict[str, object]
+
+
+@dataclass(frozen=True)
+class ProcessedRecord:
+    """One normalized record with independent validation and duplicate state."""
+
+    record: dict[str, object]
+    validation_errors: tuple[ValidationError, ...]
+    is_duplicate: bool
+
+    @property
+    def is_invalid(self) -> bool:
+        return bool(self.validation_errors)
+
+    @property
+    def is_valid(self) -> bool:
+        return not self.is_invalid and not self.is_duplicate
+
+
+@dataclass(frozen=True)
+class ProcessingResult:
+    """Complete record accounting with intentionally overlapping classifications."""
+
+    records: tuple[ProcessedRecord, ...]
+    valid_records: tuple[ProcessedRecord, ...]
+    invalid_records: tuple[ProcessedRecord, ...]
+    duplicate_records: tuple[ProcessedRecord, ...]
 
 
 class StructuralInputError(Exception):
@@ -180,3 +211,35 @@ def load_csv_files(file_paths: Sequence[Path]) -> list[LoadedRecord]:
     for file_path in file_paths:
         records.extend(load_csv_file(file_path))
     return records
+
+
+def process_records(records: Sequence[LoadedRecord]) -> ProcessingResult:
+    """Normalize, validate, deduplicate, and classify loaded records."""
+    validated_records = [normalize_and_validate_record(record) for record in records]
+    id_counts = Counter(
+        order_id
+        for result in validated_records
+        if isinstance((order_id := result.record.get("order_id")), str)
+        and order_id
+    )
+    duplicate_ids = {order_id for order_id, count in id_counts.items() if count > 1}
+
+    processed_records = tuple(
+        ProcessedRecord(
+            record=result.record,
+            validation_errors=result.errors,
+            is_duplicate=result.record.get("order_id") in duplicate_ids,
+        )
+        for result in validated_records
+    )
+
+    return ProcessingResult(
+        records=processed_records,
+        valid_records=tuple(record for record in processed_records if record.is_valid),
+        invalid_records=tuple(
+            record for record in processed_records if record.is_invalid
+        ),
+        duplicate_records=tuple(
+            record for record in processed_records if record.is_duplicate
+        ),
+    )
