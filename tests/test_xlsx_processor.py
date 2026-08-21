@@ -379,7 +379,11 @@ def test_opens_workbook_without_streaming_or_cached_formula_values(
 
     load_xlsx_file(source)
 
-    assert options == {"read_only": False, "data_only": False}
+    assert options == {
+        "read_only": False,
+        "data_only": False,
+        "keep_links": False,
+    }
     assert closed
 
 
@@ -422,7 +426,10 @@ def test_wraps_permission_error_from_workbook_opening(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    source = tmp_path / "orders.xlsx"
+    source = save_workbook(
+        tmp_path / "orders.xlsx",
+        [("Orders", [VALID_HEADER, VALID_ROW])],
+    )
     permission_error = PermissionError("access denied")
 
     def deny_access(*_args: object, **_kwargs: object):

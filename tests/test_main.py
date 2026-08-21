@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
+from zipfile import ZipFile
 
 import pytest
 from openpyxl import Workbook, load_workbook
 
 import src.exporter as exporter_module
 import src.main as main_module
+import src.xlsx_safety as xlsx_safety_module
 from src.exporter import ReportExportError
 from src.main import run
 
@@ -52,6 +54,63 @@ def test_run_returns_nonzero_and_logs_structural_failure(
     assert status == 1
     assert "Input processing failed" in caplog.text
     assert "missing required columns" in caplog.text
+    assert output_path.read_bytes() == b"previous report"
+
+
+def test_run_preserves_previous_report_after_prohibited_xlsx_xml(
+    tmp_path: Path,
+    caplog,
+) -> None:
+    prohibited_xml = """<!DOCTYPE worksheet [<!ENTITY safe "not-expanded">]>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <sheetData><row r="1"><c r="A1"><v>&safe;</v></c></row></sheetData>
+</worksheet>
+"""
+    with ZipFile(tmp_path / "orders.xlsx", "w") as archive:
+        archive.writestr("xl/worksheets/sheet1.xml", prohibited_xml)
+    output_path = tmp_path / "output" / "sales_report.xlsx"
+    output_path.parent.mkdir()
+    output_path.write_bytes(b"previous report")
+
+    with caplog.at_level(logging.INFO):
+        status = run(tmp_path, output_path)
+
+    assert status == 1
+    assert "package preflight failed" in caplog.text
+    assert "Successfully published Excel report" not in caplog.text
+    assert output_path.read_bytes() == b"previous report"
+
+
+def test_run_controls_zip_open_permission_error_and_preserves_report(
+    tmp_path: Path,
+    caplog,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.append(
+        ["order_id", "customer_name", "email", "order_date", "amount", "status"]
+    )
+    worksheet.append(["001", "Julia", None, "2026-08-20", "1.00", "paid"])
+    workbook.save(tmp_path / "orders.xlsx")
+    workbook.close()
+    output_path = tmp_path / "output" / "sales_report.xlsx"
+    output_path.parent.mkdir()
+    output_path.write_bytes(b"previous report")
+    permission_error = PermissionError("access denied after stat")
+
+    def deny_zip_open(*_args: object, **_kwargs: object) -> None:
+        raise permission_error
+
+    monkeypatch.setattr(xlsx_safety_module, "ZipFile", deny_zip_open)
+
+    with caplog.at_level(logging.INFO):
+        status = run(tmp_path, output_path)
+
+    assert status == 1
+    assert "package preflight failed" in caplog.text
+    assert "Successfully loaded" not in caplog.text
+    assert "Successfully published Excel report" not in caplog.text
     assert output_path.read_bytes() == b"previous report"
 
 

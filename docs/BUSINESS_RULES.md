@@ -58,6 +58,8 @@ Zero is valid. Negative amounts are invalid. Refunds are represented by the `ref
 
 Version 1 CSV files use UTF-8, contain a header, and use a comma delimiter. UTF-8 with BOM is accepted and read with `utf-8-sig` so the BOM does not become part of the first header name. Other encodings remain invalid. The application must not silently guess another encoding or delimiter.
 
+Each CSV field is limited to 128 KiB (131,072 characters). A field above that explicit limit is a structural source error; the application does not truncate it or increase the limit silently.
+
 File extensions are matched case-insensitively. Discovery is not recursive: only regular files directly inside `data/input/` are considered, and files in subdirectories are ignored.
 
 Header names are validated exactly and case-sensitively. The application must not trim, lowercase, rename, correct, or otherwise normalize them silently.
@@ -80,7 +82,23 @@ XLSX discovery is non-recursive, case-insensitive by extension, limited to regul
 
 Native numeric `order_id` values are invalid and are not converted to text. Native integer amounts are converted exactly to `Decimal`; native float amounts use `Decimal(str(value))`, never `Decimal(float_value)`. Boolean values are invalid in every business field.
 
-Open XLSX input with `read_only=False` and `data_only=False`. Formulas are never executed or interpreted. A formula in a header is a structural error; a formula in any required or extra data cell makes that record invalid while retaining the expression for traceability.
+Before openpyxl loads an XLSX input, inspect its ZIP package without extracting members. Reject empty or non-XLSX ZIPs, invalid or missing content-types, workbook, or workbook-relationships parts, unsafe, external, duplicate, or missing referenced worksheet targets, unsupported compression methods, CRC failures in any member, suspicious or duplicate member names, encrypted members, prohibited XML, and packages that exceed any approved resource limit. Resolve referenced worksheet parts through the workbook's OOXML relationships without assuming conventional package paths. Stored and deflated ZIP members are the only supported compression methods.
+
+- 10 MiB XLSX file size;
+- 1,000 ZIP members;
+- 100 MiB total uncompressed size;
+- 50 MiB for an individual member;
+- 100:1 individual or aggregate material compression ratio;
+- 50 worksheets;
+- 100,000 rows per worksheet;
+- 256 columns per worksheet;
+- 1,000,000 total logical cells across worksheets.
+
+Compression-ratio enforcement is material when an individual uncompressed member exceeds 1 MiB or the package total uncompressed size exceeds 10 MiB. Logical-cell accounting uses the effective worksheet area and must detect sparse extreme coordinates rather than trusting only declared dimensions.
+
+Open XLSX input with `read_only=False`, `data_only=False`, and `keep_links=False`. Do not preserve external-workbook caches or access external resources. Formulas are never executed or interpreted. A formula in a header is a structural error; a formula in any required or extra data cell makes that record invalid while retaining the expression for traceability.
+
+Protected XML parsing through defusedxml must be active before XLSX processing. If that runtime protection is unavailable or disabled, fail structurally instead of processing the source with weaker silent defaults.
 
 ## Traceability and Auditability
 

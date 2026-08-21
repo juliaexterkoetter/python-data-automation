@@ -5,17 +5,24 @@ from __future__ import annotations
 import csv
 import logging
 from collections import Counter
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TypeAlias
 from xml.etree.ElementTree import ParseError
 from zipfile import BadZipFile
 
+from defusedxml.common import DefusedXmlException
 from openpyxl import load_workbook
 from openpyxl.utils.exceptions import InvalidFileException
 
 from src.validator import FormulaValue, ValidationError, normalize_and_validate_record
+from src.xlsx_safety import (
+    UnsafeXlsxPackageError,
+    inspect_xlsx_package,
+    validate_loaded_workbook_limits,
+)
 
 
 REQUIRED_COLUMNS = frozenset(
@@ -27,6 +34,7 @@ RESERVED_TRACEABILITY_COLUMNS = frozenset(
 SUPPORTED_CSV_SUFFIX = ".csv"
 SUPPORTED_XLSX_SUFFIX = ".xlsx"
 SUPPORTED_INPUT_SUFFIXES = frozenset({SUPPORTED_CSV_SUFFIX, SUPPORTED_XLSX_SUFFIX})
+CSV_MAX_FIELD_SIZE = 128 * 1024
 
 LOGGER = logging.getLogger(__name__)
 
@@ -172,6 +180,17 @@ def _detect_non_comma_delimiter(sample: str, file_path: Path) -> None:
         )
 
 
+@contextmanager
+def _csv_field_size_policy() -> Iterator[None]:
+    """Apply the deterministic CSV field limit and restore process state."""
+    previous_limit = csv.field_size_limit()
+    csv.field_size_limit(CSV_MAX_FIELD_SIZE)
+    try:
+        yield
+    finally:
+        csv.field_size_limit(previous_limit)
+
+
 def _validate_header(header: list[str], file_path: Path) -> None:
     """Validate the exact, case-sensitive CSV header contract."""
     if not header or not any(header):
@@ -207,7 +226,11 @@ def _validate_header(header: list[str], file_path: Path) -> None:
 def load_csv_file(file_path: Path) -> list[LoadedRecord]:
     """Validate and load one CSV file with source traceability metadata."""
     try:
-        with file_path.open(encoding="utf-8-sig", errors="strict", newline="") as file:
+        with _csv_field_size_policy(), file_path.open(
+            encoding="utf-8-sig",
+            errors="strict",
+            newline="",
+        ) as file:
             sample = file.read(8192)
             if not sample:
                 raise CsvStructuralError(file_path, "missing header")
@@ -251,7 +274,14 @@ def load_csv_file(file_path: Path) -> list[LoadedRecord]:
     except UnicodeDecodeError as error:
         raise CsvStructuralError(file_path, "file is not valid UTF-8") from error
     except csv.Error as error:
-        raise CsvStructuralError(file_path, f"malformed CSV: {error}") from error
+        if "field larger than field limit" in str(error):
+            detail = (
+                f"field exceeds the maximum size of "
+                f"{CSV_MAX_FIELD_SIZE} characters"
+            )
+        else:
+            detail = f"malformed CSV: {error}"
+        raise CsvStructuralError(file_path, detail) from error
     except OSError as error:
         raise CsvStructuralError(file_path, f"file could not be read: {error}") from error
 
@@ -339,14 +369,42 @@ def _xlsx_header(worksheet: object, file_path: Path) -> tuple[list[object], int]
 def load_xlsx_file(file_path: Path) -> list[LoadedRecord]:
     """Validate and load all usable worksheets from one XLSX workbook."""
     try:
-        workbook = load_workbook(file_path, read_only=False, data_only=False)
-    except (BadZipFile, InvalidFileException, OSError, ParseError, ValueError) as error:
+        inspect_xlsx_package(file_path)
+    except UnsafeXlsxPackageError as error:
+        raise XlsxStructuralError(
+            file_path,
+            f"package preflight failed: {error}",
+        ) from error
+
+    try:
+        workbook = load_workbook(
+            file_path,
+            read_only=False,
+            data_only=False,
+            keep_links=False,
+        )
+    except (
+        BadZipFile,
+        DefusedXmlException,
+        InvalidFileException,
+        OSError,
+        ParseError,
+        ValueError,
+    ) as error:
         raise XlsxStructuralError(
             file_path,
             f"workbook could not be read: {error}",
         ) from error
 
     try:
+        try:
+            validate_loaded_workbook_limits(workbook)
+        except UnsafeXlsxPackageError as error:
+            raise XlsxStructuralError(
+                file_path,
+                f"workbook limit validation failed: {error}",
+            ) from error
+
         records: list[LoadedRecord] = []
         usable_worksheets = 0
 
@@ -406,7 +464,13 @@ def load_xlsx_file(file_path: Path) -> list[LoadedRecord]:
         return records
     except XlsxStructuralError:
         raise
-    except (BadZipFile, InvalidFileException, OSError, ParseError) as error:
+    except (
+        BadZipFile,
+        DefusedXmlException,
+        InvalidFileException,
+        OSError,
+        ParseError,
+    ) as error:
         raise XlsxStructuralError(
             file_path,
             f"workbook could not be read: {error}",

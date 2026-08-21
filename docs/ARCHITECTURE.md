@@ -7,6 +7,7 @@ The approved Version 1 architecture is implemented. CSV and XLSX discovery and s
 ```text
 discover CSV and XLSX sources
     -> fail if no supported source exists
+    -> inspect XLSX packages and enforce resource limits
     -> classify XLSX worksheets and validate data-source structures
     -> load records and attach source metadata
     -> combine records across files and worksheets
@@ -40,7 +41,9 @@ A structural or operational failure stops successful publication and results in 
 - Validate CSV header names exactly and case-sensitively without silent normalization.
 - Classify XLSX worksheets by required-column presence, log skipped auxiliary worksheets, fail on partial schemas, and load complete schemas.
 - Read XLSX headers only from physical row 1 and validate them exactly without silent normalization.
-- Open XLSX workbooks with `read_only=False` and `data_only=False`, close them after success or failure, and surface predictable workbook errors structurally.
+- Require active defusedxml integration before processing XLSX input.
+- Delegate ZIP/OOXML package preflight and technical resource limits to `src/xlsx_safety.py` before opening a workbook.
+- Open XLSX workbooks with `read_only=False`, `data_only=False`, and `keep_links=False`, close them after success or failure, and surface predictable workbook errors structurally.
 - Preserve empty XLSX rows between records and reject populated columns with empty headers.
 - Retain formulas without evaluating them so row validation can reject formulas in required or extra data cells.
 - Fail a workbook that contains no usable data worksheet.
@@ -54,6 +57,14 @@ A structural or operational failure stops successful publication and results in 
 - Identify every occurrence of repeated IDs across the combined dataset.
 - Exclude missing normalized IDs from duplicate detection.
 - Produce explicit valid, invalid, and duplicate classifications while preserving overlap and record order.
+
+### `src/xlsx_safety.py`
+
+- Enforce the approved XLSX file, ZIP-member, expansion, worksheet-dimension, and logical-cell limits before normal workbook processing.
+- Validate the minimum OOXML workbook structure and content-types root, resolve referenced worksheets through safe internal workbook relationships without assuming fixed paths, permit only stored and deflated members, and stream every member for CRC integrity without extracting package content to disk.
+- Reject suspicious, duplicate, encrypted, oversized, over-compressed, malformed, or prohibited package content with a focused technical exception.
+- Recheck limits that depend on openpyxl's loaded workbook model.
+- Remain independent from record normalization, business validation, duplicate detection, classification, summary calculation, and export.
 
 ### `src/validator.py`
 
@@ -116,6 +127,7 @@ Structural and operational failures include missing input directories, no suppor
 
 ## Dependencies
 
+- `defusedxml` for protected XML parsing within openpyxl input handling.
 - `openpyxl` for native Excel values, multi-worksheet XLSX processing, and workbook output.
 - `pytest` as a development dependency for automated tests.
 
