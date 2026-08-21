@@ -45,7 +45,7 @@ A structural or operational failure stops successful publication and results in 
 - Delegate ZIP/OOXML package preflight and technical resource limits to `src/xlsx_safety.py` before opening a workbook.
 - Open XLSX workbooks with `read_only=False`, `data_only=False`, and `keep_links=False`, close them after success or failure, and surface predictable workbook errors structurally.
 - Preserve empty XLSX rows between records and reject populated columns with empty headers.
-- Retain formulas without evaluating them so row validation can reject formulas in required or extra data cells.
+- Retain formulas without evaluating them so row validation can reject formulas in required or extra data cells. Preserve ordinary and array expression text directly; represent data-table formulas through a deterministic fixed-order description of their documented structural attributes rather than a Python object representation.
 - Fail a workbook that contains no usable data worksheet.
 - Treat required-column failures as structural source errors.
 - Reject input columns that collide with reserved traceability names.

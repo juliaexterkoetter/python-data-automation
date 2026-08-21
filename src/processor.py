@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import json
 import logging
 from collections import Counter
 from collections.abc import Iterator, Sequence
@@ -16,6 +17,7 @@ from zipfile import BadZipFile
 from defusedxml.common import DefusedXmlException
 from openpyxl import load_workbook
 from openpyxl.utils.exceptions import InvalidFileException
+from openpyxl.worksheet.formula import ArrayFormula, DataTableFormula
 
 from src.validator import FormulaValue, ValidationError, normalize_and_validate_record
 from src.xlsx_safety import (
@@ -366,6 +368,70 @@ def _xlsx_header(worksheet: object, file_path: Path) -> tuple[list[object], int]
     return header, last_used_column
 
 
+def _formula_attribute(value: object) -> str:
+    """Serialize one documented formula attribute without object repr fallbacks."""
+    if not isinstance(value, (str, bool, type(None))):
+        raise TypeError(f"unsupported formula attribute type: {type(value).__name__}")
+    return json.dumps(value, ensure_ascii=True, separators=(",", ":"))
+
+
+def _retain_formula(
+    value: object,
+    file_path: Path,
+    sheet_name: str,
+    coordinate: str,
+) -> FormulaValue:
+    """Return a deterministic, non-executable trace of an XLSX formula."""
+    if isinstance(value, str):
+        return FormulaValue(value)
+
+    if isinstance(value, ArrayFormula):
+        if isinstance(value.text, str):
+            return FormulaValue(value.text)
+        try:
+            reference = _formula_attribute(value.ref)
+        except TypeError as error:
+            raise XlsxStructuralError(
+                file_path,
+                f"unsupported array formula at cell {coordinate}: {error}",
+                sheet_name=sheet_name,
+            ) from error
+        return FormulaValue(f"array(ref={reference}, text=null)")
+
+    if isinstance(value, DataTableFormula):
+        attributes = (
+            ("ref", value.ref),
+            ("ca", value.ca),
+            ("dt2D", value.dt2D),
+            ("dtr", value.dtr),
+            ("r1", value.r1),
+            ("r2", value.r2),
+            ("del1", value.del1),
+            ("del2", value.del2),
+        )
+        try:
+            serialized = ", ".join(
+                f"{name}={_formula_attribute(attribute)}"
+                for name, attribute in attributes
+            )
+        except TypeError as error:
+            raise XlsxStructuralError(
+                file_path,
+                f"unsupported data table formula at cell {coordinate}: {error}",
+                sheet_name=sheet_name,
+            ) from error
+        return FormulaValue(f"dataTable({serialized})")
+
+    raise XlsxStructuralError(
+        file_path,
+        (
+            f"unsupported formula representation at cell {coordinate}: "
+            f"{type(value).__name__}"
+        ),
+        sheet_name=sheet_name,
+    )
+
+
 def load_xlsx_file(file_path: Path) -> list[LoadedRecord]:
     """Validate and load all usable worksheets from one XLSX workbook."""
     try:
@@ -450,7 +516,12 @@ def load_xlsx_file(file_path: Path) -> list[LoadedRecord]:
                     cell = worksheet.cell(row=row_index, column=column_index)
                     value: object = cell.value
                     if cell.data_type == "f":
-                        value = FormulaValue(str(value))
+                        value = _retain_formula(
+                            value,
+                            file_path,
+                            worksheet.title,
+                            cell.coordinate,
+                        )
                     record[column_name] = value
 
                 record["source_file"] = file_path.name

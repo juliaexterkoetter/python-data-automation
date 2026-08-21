@@ -8,7 +8,9 @@ from pathlib import Path
 import pytest
 from openpyxl import Workbook
 from openpyxl import load_workbook as open_workbook
+from openpyxl.worksheet.formula import ArrayFormula, DataTableFormula
 
+from src.exporter import export_report
 from src.processor import (
     NoSupportedInputFilesError,
     XlsxStructuralError,
@@ -17,6 +19,8 @@ from src.processor import (
     load_xlsx_file,
     process_records,
 )
+from src.summary import calculate_summary
+from src.validator import FormulaValue
 
 
 VALID_HEADER = [
@@ -44,6 +48,35 @@ def save_workbook(path: Path, sheets: list[tuple[str, list[list[object]]]]) -> P
         worksheet = workbook.create_sheet(title)
         for row in rows:
             worksheet.append(row)
+    workbook.save(path)
+    workbook.close()
+    return path
+
+
+def save_special_formula_workbook(path: Path) -> Path:
+    """Create a real workbook containing every formula representation we support."""
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.title = "Orders"
+    worksheet.append([*VALID_HEADER, "note"])
+    worksheet.append([*VALID_ROW, "=SUM(1,2)"])
+    worksheet.append(
+        ["ARRAY", "Array", None, "2026-08-21", "2.00", "paid", None]
+    )
+    worksheet["G3"] = ArrayFormula("G3:G3", "=SUM(2,3)")
+    worksheet.append(
+        ["TABLE", "Table", None, "2026-08-22", "3.00", "paid", None]
+    )
+    worksheet["G4"] = DataTableFormula(
+        "G4:G4",
+        ca=True,
+        dt2D=True,
+        dtr=False,
+        r1="A1",
+        r2="B1",
+        del1=False,
+        del2=True,
+    )
     workbook.save(path)
     workbook.close()
     return path
@@ -489,6 +522,88 @@ def test_formula_in_required_or_extra_data_cell_is_record_level_error(
         error.code == "formula_not_allowed"
         for error in result.invalid_records[0].validation_errors
     )
+
+
+def test_preserves_special_xlsx_formulas_deterministically(tmp_path: Path) -> None:
+    source = save_special_formula_workbook(tmp_path / "special-formulas.xlsx")
+    first_records = load_xlsx_file(source)
+    second_records = load_xlsx_file(source)
+
+    first_formulas = tuple(record["note"] for record in first_records)
+    second_formulas = tuple(record["note"] for record in second_records)
+    assert first_formulas == second_formulas
+    assert first_formulas == (
+        FormulaValue("=SUM(1,2)"),
+        FormulaValue("=SUM(2,3)"),
+        FormulaValue(
+            'dataTable(ref="G4:G4", ca="1", dt2D="1", dtr=false, '
+            'r1="A1", r2="B1", del1=false, del2="1")'
+        ),
+    )
+    assert all("object at 0x" not in formula.expression for formula in first_formulas)
+
+    result = process_records(first_records)
+    assert len(result.invalid_records) == 3
+    assert all(
+        any(error.code == "formula_not_allowed" for error in record.validation_errors)
+        for record in result.invalid_records
+    )
+
+
+def test_special_xlsx_formulas_export_as_non_executable_text(tmp_path: Path) -> None:
+    source = save_special_formula_workbook(tmp_path / "special-formulas.xlsx")
+    result = process_records(load_xlsx_file(source))
+    output = tmp_path / "sales-report.xlsx"
+
+    export_report(result, calculate_summary(result), output)
+
+    workbook = open_workbook(output, data_only=False)
+    try:
+        invalid = workbook["Invalid Records"]
+        headers = [cell.value for cell in invalid[1]]
+        note_column = headers.index("note") + 1
+        notes = tuple(
+            invalid.cell(row=row, column=note_column)
+            for row in range(2, invalid.max_row + 1)
+        )
+        assert [cell.value for cell in notes] == [
+            "'=SUM(1,2)",
+            "'=SUM(2,3)",
+            (
+                'dataTable(ref="G4:G4", ca="1", dt2D="1", dtr=false, '
+                'r1="A1", r2="B1", del1=false, del2="1")'
+            ),
+        ]
+        assert all(cell.data_type == "s" for cell in notes)
+    finally:
+        workbook.close()
+
+
+def test_rejects_unexpected_formula_object_without_object_repr(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = save_workbook(
+        tmp_path / "unexpected-formula.xlsx",
+        [("Orders", [[*VALID_HEADER, "note"], [*VALID_ROW, "plain"]])],
+    )
+
+    def load_with_unexpected_formula(filename: Path, **kwargs: object):
+        workbook = open_workbook(filename, **kwargs)
+        cell = workbook["Orders"]["G2"]
+        cell._value = object()
+        cell.data_type = "f"
+        return workbook
+
+    monkeypatch.setattr("src.processor.load_workbook", load_with_unexpected_formula)
+
+    with pytest.raises(
+        XlsxStructuralError,
+        match="unsupported formula representation at cell G2: object",
+    ) as captured:
+        load_xlsx_file(source)
+
+    assert "object at 0x" not in str(captured.value)
 
 
 def test_native_xlsx_types_follow_shared_record_validation(tmp_path: Path) -> None:
