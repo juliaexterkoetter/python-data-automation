@@ -86,7 +86,18 @@ Python, openpyxl, defusedxml, pytest, CSV, XLSX/OOXML, Decimal, and standard-lib
 - Data Validation
 - Report Automation
 
-### Screenshot captions
+### Programmatic rendering captions
+
+These four repository assets are reproducible renderings of the real demonstration workbook data. They are not Microsoft Excel interface screenshots.
+
+- `01-summary.png`: “Validated processing totals with independent invalid and duplicate counts.”
+- `02-valid-records.png`: “Valid unique records ready for reporting with source traceability.”
+- `03-invalid-records.png`: “Invalid records retained with explicit reasons and source traceability.”
+- `04-duplicates.png`: “All duplicate occurrences preserved for review.”
+
+### Optional manual evidence captions
+
+These filenames belong to the separate manual capture plan. Excel worksheet captures are evidence only after the workbook has been opened and inspected in Microsoft Excel; they are not supplied by the programmatic renderer.
 
 - `01-input-files.png`: “Fictitious CSV and Excel source files ready for one automated run.”
 - `02-terminal-success.png`: “Clear processing logs and successful report publication.”

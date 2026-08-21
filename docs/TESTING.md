@@ -80,6 +80,13 @@ Tests cover the implemented Version 1 pipeline: CSV and XLSX discovery and struc
 - A structurally or operationally failed source must prevent successful final-report publication.
 - A failed export must not destroy an existing valid report.
 
+## Portfolio Renderer Coverage
+
+- Exact deterministic validation of all four programmatic portfolio assets against a temporary regeneration from the source workbook.
+- Rejection of white or otherwise incorrect valid PNGs, single-pixel changes, swapped filenames, wrong dimensions, corruption, and missing assets.
+- Byte-identical repeated rendering and preservation of the source workbook hash.
+- Portfolio tests use the dedicated Pillow dependency included through `requirements-portfolio.txt`; this does not add Pillow to the Version 1 runtime requirements.
+
 ## Unit Tests
 
 ### Normalization and Validation

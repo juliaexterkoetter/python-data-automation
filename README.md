@@ -94,6 +94,28 @@ The repository includes a small, fully fictitious mixed-format scenario under `d
 
 The generated workbook is written to `data/demo/output/sales_report.xlsx`. Expected counts and records are documented in [the demo guide](data/demo/README.md). Generated output is intentionally ignored by Git.
 
+## Portfolio renderings
+
+The repository includes four reproducible presentation renderings under `portfolio/screenshots/`. They are generated programmatically from the real demonstration workbook; they are not screenshots of the Microsoft Excel interface and do not replace the pending manual Excel smoke test.
+
+```bash
+.venv/bin/python -m pip install -r requirements-portfolio.txt
+.venv/bin/python -m scripts.render_portfolio_screenshots
+.venv/bin/python -m scripts.render_portfolio_screenshots --validate-only
+```
+
+The validator regenerates the expected images in a temporary directory and requires byte-identical content. Rendering requires DejaVu Sans. The tool resolves the font by name or common Linux installation paths and fails clearly if it is unavailable.
+
+## Clean source archive
+
+To prepare a distribution from tracked files without including `.git`, virtual environments, caches, ignored outputs, or other local workspace content, write a Git archive outside the repository:
+
+```bash
+git archive --format=zip --output=../python-data-automation.zip HEAD
+```
+
+Do not add the generated archive to the repository.
+
 ## Tests
 
 ```bash
@@ -111,6 +133,7 @@ The suite covers the complete CSV/XLSX pipeline, validation, duplicates, classif
 - `data/input/` is a trusted local operator directory. Concurrent hostile local writes and the residual TOCTOU window are outside Version 1.
 - Atomic replacement is not a power-loss, kernel-crash, or physical-storage durability guarantee.
 - The dependency versions work in the validated Python 3.14.4 environment, but formal Python 3.14 support is not independently verified for every dependency.
+- Dates before 1900 are not rejected by a new business rule, but XLSX/Excel interoperability for historical dates is unreliable. The [openpyxl date and time documentation](https://openpyxl.readthedocs.io/en/stable/datetime.html) advises against using XLSX for such dates because Excel may not recognize or display them correctly.
 - Automated tests validate workbook structure and values, but the Microsoft Excel for Windows smoke test remains manual until a person completes [the checklist](docs/EXCEL_SMOKE_TEST.md).
 
 ## Project documentation
