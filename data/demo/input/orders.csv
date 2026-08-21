@@ -1,0 +1,5 @@
+order_id,customer_name,email,order_date,amount,status,note
+001,Ada Example,ADA@EXAMPLE.COM,2026-08-01,10.005,paid,=Quarterly target
+DUP-100,Ben Example,ben@example.com,2026-08-02,5.00,pending,Repeated order
+BAD-EMAIL,Cy Example,not-an-email,2026-08-03,12.00,paid,Invalid email
+BOTH-200,,both@example.com,2026-08-04,2.00,paid,Invalid and duplicated

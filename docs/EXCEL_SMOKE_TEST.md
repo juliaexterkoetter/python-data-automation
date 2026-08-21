@@ -4,6 +4,20 @@ Status: **WAITING FOR MANUAL EXCEL SMOKE TEST**
 
 Use a report generated from fictitious demonstration data. Do not use client, company, or personal data in screenshots or portfolio material.
 
+Generate the report from the repository root:
+
+```bash
+.venv/bin/python -m scripts.run_demo
+```
+
+From WSL, open the generated file with its Windows file association:
+
+```bash
+explorer.exe "$(wslpath -w data/demo/output/sales_report.xlsx)"
+```
+
+Confirm that the associated application is Microsoft Excel before performing the checklist.
+
 ## Checklist
 
 - [ ] 1. Open `sales_report.xlsx` in Microsoft Excel for Windows without a repair or corruption warning.
