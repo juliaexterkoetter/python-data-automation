@@ -529,3 +529,43 @@ Statuses used in this log are `proposed`, `accepted`, and `superseded`. Proposed
 - **Context:** XLSX numeric serialization does not preserve the observable distinction between `float -0.0` and positive zero.
 - **Decision:** Reject negative signed float zero with `ReportExportError`. Continue to allow positive `float 0.0` where floats are otherwise supported. Do not convert negative signed zero to text without a separate approved decision.
 - **Consequences:** The exporter fails explicitly instead of silently losing the sign of an input-controlled float value.
+
+## D59 — XML Parser Protection
+
+- **Status:** accepted
+- **Date:** 2026-08-21
+- **Context:** XLSX packages contain XML, and processing client-provided XML without the protection expected by openpyxl can expose the application to entity-expansion and external-reference attacks.
+- **Decision:** Require `defusedxml==0.7.1` as a runtime dependency and require `openpyxl.xml.DEFUSEDXML` to be active before processing XLSX input. Prohibited XML must cause a controlled structural source failure with its relevant technical cause preserved. Do not use dangerous expansion payloads in tests.
+- **Consequences:** XLSX processing fails visibly when the approved XML protection is unavailable or rejects package XML; ZIP bombs and large legitimate XML remain governed separately by package limits.
+
+## D60 — XLSX Package Preflight
+
+- **Status:** accepted
+- **Date:** 2026-08-21
+- **Context:** openpyxl's in-memory loading must not be the first resource boundary applied to an untrusted XLSX ZIP package.
+- **Decision:** Inspect every XLSX package with `zipfile` before `openpyxl.load_workbook()` without extracting files. Validate the archive, member count, absolute paths, parent traversal, backslashes, NUL characters, duplicate names, encryption flags, individual and aggregate sizes, individual and aggregate compression ratios, and zero compressed sizes. Accept only stored and deflated ZIP members. Require the content-types manifest to have the expected root and declare exactly one XLSX workbook part. Require the declared workbook and its relationships part, resolve the workbook's referenced worksheet relationships as safe internal package targets without assuming conventional paths, and apply worksheet limits to those resolved parts. After metadata limits pass, stream every member to validate its CRC; stream worksheet XML separately to enforce coordinate-based limits. Do not implement a general OOXML parser.
+- **Consequences:** Predictably unsafe packages fail structurally before normal workbook loading and cannot return partial records.
+
+## D61 — XLSX Operational Limits
+
+- **Status:** accepted
+- **Date:** 2026-08-21
+- **Context:** The non-streaming V1 loader prioritizes deterministic worksheet semantics but needs explicit resource limits for small and medium automation workloads.
+- **Decision:** Limit an XLSX source to 10 MiB, 1,000 ZIP members, 100 MiB total uncompressed content, 50 MiB per member, a material compression ratio of 100:1, 50 worksheets, 100,000 rows per worksheet, 256 columns per worksheet, and 1,000,000 total logical cells. Treat a ratio as material when an individual uncompressed member exceeds 1 MiB or total uncompressed package content exceeds 10 MiB. Derive logical area from actual worksheet references rather than trusting only declared dimensions, and recheck loaded-model limits where necessary.
+- **Consequences:** Oversized, over-compressed, excessively wide, tall, numerous, or sparse-extreme inputs fail explicitly without allocating the full processing workload or silently dropping content.
+
+## D62 — External Link Cache Policy
+
+- **Status:** accepted
+- **Date:** 2026-08-21
+- **Context:** Cached external-workbook links are not approved sales-record inputs and can add unnecessary memory and package-processing cost.
+- **Decision:** Open XLSX inputs with `read_only=False`, `data_only=False`, and `keep_links=False`. Do not preserve external-workbook caches or access external resources.
+- **Consequences:** Approved worksheet values and formula traceability remain available while irrelevant external-link caches are excluded from the processing model.
+
+## D63 — CSV Field Size
+
+- **Status:** accepted
+- **Date:** 2026-08-21
+- **Context:** The standard CSV parser exposes a process-level field-size setting whose implicit default is not part of the project's deterministic source contract.
+- **Decision:** Apply an explicit maximum of 128 KiB (131,072 characters) to each CSV field during source loading, restore the previous process-level parser setting afterward, and treat a larger field as a controlled structural source error. Do not truncate the field or increase the limit silently.
+- **Consequences:** CSV behavior is deterministic for the single-threaded V1 process and unusually large fields fail visibly without altering surrounding parser state.

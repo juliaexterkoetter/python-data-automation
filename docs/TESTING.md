@@ -12,6 +12,7 @@ Tests cover the implemented Version 1 pipeline: CSV and XLSX discovery and struc
 - Textual `order_id` values with leading zeros preserved.
 - `source_file`, null `source_sheet`, and physical 1-based `source_row`, including multiline records.
 - Complete-operation failure when any CSV source is structurally invalid.
+- Explicit 128 KiB field-size boundary, controlled failure above it, and restoration of the surrounding parser setting.
 - Logging and zero/non-zero exit-status coordination.
 
 ## Implemented Record-Processing Coverage
@@ -37,6 +38,11 @@ Tests cover the implemented Version 1 pipeline: CSV and XLSX discovery and struc
 - Formula rejection in headers and record-level rejection in required and extra data cells without cached values.
 - Corrupted workbook failures with preserved causes and complete-operation failure across mixed sources.
 - Duplicate detection across CSV and XLSX records.
+- Active defusedxml integration and controlled rejection of a minimal prohibited XML entity declaration without dangerous expansion.
+- ZIP preflight without extraction, including empty and non-XLSX packages, content-types and relationship roots, conventional and custom workbook and worksheet paths, safe internal relationship resolution, invalid or external targets, unsupported compression, CRC integrity for used and ignored members, member names, duplicates, encryption, member counts, compressed and uncompressed sizes, zero compressed sizes, and exact material individual and aggregate compression-ratio boundaries.
+- Exact and exceeded boundaries for worksheet count, explicit and implicit physical row and column references, total logical cells, and sparse extreme coordinates, with worksheet counting scoped to SpreadsheetML `sheetData` elements.
+- Revalidation against the loaded workbook model and external-link caches disabled with `keep_links=False`.
+- Complete-operation failure before partial records can escape when package preflight or workbook limits fail.
 
 ## Implemented Summary Coverage
 
@@ -166,6 +172,7 @@ Test handling of:
 - Existing, locked, or unavailable output paths.
 - Spreadsheet formula payloads in required and extra textual columns.
 - Data volumes approaching workbook limits when an operational volume is defined.
+- XLSX packages at and beyond approved file, member, expansion, worksheet, row, column, and logical-cell limits, using small synthetic fixtures and lowered test limits rather than dangerous payloads.
 
 ## Test Commands
 

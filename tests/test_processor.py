@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import csv
 from pathlib import Path
 
 import pytest
 
+import src.processor as processor_module
 from src.processor import (
+    CSV_MAX_FIELD_SIZE,
     CsvStructuralError,
     InputDirectoryAccessError,
     InputDirectoryNotFoundError,
@@ -134,6 +137,125 @@ def test_load_csv_file_rejects_non_utf8_bytes(tmp_path: Path) -> None:
 
     with pytest.raises(CsvStructuralError, match="not valid UTF-8"):
         load_csv_file(file_path)
+
+
+def test_load_csv_file_accepts_field_at_explicit_size_limit(tmp_path: Path) -> None:
+    file_path = write_csv(
+        tmp_path / "orders.csv",
+        f"{VALID_HEADER},extra\n{VALID_ROW},{'x' * CSV_MAX_FIELD_SIZE}\n",
+    )
+
+    records = load_csv_file(file_path)
+
+    assert len(records[0]["extra"]) == CSV_MAX_FIELD_SIZE
+
+
+def test_load_csv_file_rejects_field_above_explicit_size_limit(
+    tmp_path: Path,
+) -> None:
+    file_path = write_csv(
+        tmp_path / "orders.csv",
+        f"{VALID_HEADER},extra\n{VALID_ROW},{'x' * (CSV_MAX_FIELD_SIZE + 1)}\n",
+    )
+
+    with pytest.raises(CsvStructuralError) as captured:
+        load_csv_file(file_path)
+
+    assert captured.value.detail == (
+        f"field exceeds the maximum size of {CSV_MAX_FIELD_SIZE} characters"
+    )
+    assert captured.value.__cause__ is not None
+
+
+def test_load_csv_file_restores_process_field_limit(tmp_path: Path) -> None:
+    file_path = write_csv(
+        tmp_path / "orders.csv",
+        f"{VALID_HEADER}\n{VALID_ROW}\n",
+    )
+    previous_limit = csv.field_size_limit()
+    temporary_limit = previous_limit + 1
+    csv.field_size_limit(temporary_limit)
+    try:
+        load_csv_file(file_path)
+        assert csv.field_size_limit() == temporary_limit
+    finally:
+        csv.field_size_limit(previous_limit)
+
+
+def test_load_csv_file_restores_process_field_limit_after_csv_error(
+    tmp_path: Path,
+) -> None:
+    file_path = write_csv(
+        tmp_path / "orders.csv",
+        f"{VALID_HEADER},extra\n{VALID_ROW},{'x' * (CSV_MAX_FIELD_SIZE + 1)}\n",
+    )
+    previous_limit = csv.field_size_limit()
+    temporary_limit = previous_limit + 7
+    csv.field_size_limit(temporary_limit)
+    try:
+        with pytest.raises(CsvStructuralError) as captured:
+            load_csv_file(file_path)
+
+        assert isinstance(captured.value.__cause__, csv.Error)
+        assert csv.field_size_limit() == temporary_limit
+    finally:
+        csv.field_size_limit(previous_limit)
+
+
+def test_load_csv_file_restores_process_field_limit_after_unexpected_error(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    file_path = write_csv(
+        tmp_path / "orders.csv",
+        f"{VALID_HEADER}\n{VALID_ROW}\n",
+    )
+    previous_limit = csv.field_size_limit()
+    temporary_limit = previous_limit + 11
+    programming_error = RuntimeError("unexpected CSV bug")
+
+    def fail_unexpectedly(_sample: str, _path: Path) -> None:
+        raise programming_error
+
+    monkeypatch.setattr(
+        processor_module,
+        "_detect_non_comma_delimiter",
+        fail_unexpectedly,
+    )
+    csv.field_size_limit(temporary_limit)
+    try:
+        with pytest.raises(RuntimeError) as captured:
+            load_csv_file(file_path)
+
+        assert captured.value is programming_error
+        assert csv.field_size_limit() == temporary_limit
+    finally:
+        csv.field_size_limit(previous_limit)
+
+
+def test_consecutive_csv_loads_preserve_the_callers_field_limit(
+    tmp_path: Path,
+) -> None:
+    valid = write_csv(
+        tmp_path / "valid.csv",
+        f"{VALID_HEADER}\n{VALID_ROW}\n",
+    )
+    oversized = write_csv(
+        tmp_path / "oversized.csv",
+        f"{VALID_HEADER},extra\n{VALID_ROW},{'x' * (CSV_MAX_FIELD_SIZE + 1)}\n",
+    )
+    previous_limit = csv.field_size_limit()
+    temporary_limit = previous_limit + 17
+    csv.field_size_limit(temporary_limit)
+    try:
+        load_csv_file(valid)
+        with pytest.raises(CsvStructuralError):
+            load_csv_file(oversized)
+        load_csv_file(valid)
+
+        assert csv.field_size_limit() == temporary_limit
+    finally:
+        csv.field_size_limit(previous_limit)
 
 
 @pytest.mark.parametrize("content", ["", "\n"])
