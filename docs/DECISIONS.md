@@ -431,8 +431,8 @@ Statuses used in this log are `proposed`, `accepted`, and `superseded`. Proposed
 - **Status:** accepted
 - **Date:** 2026-08-20
 - **Context:** Cached formula results may be stale or missing, and the application must not execute or interpret formulas.
-- **Decision:** Open workbooks with `data_only=False`; fail structurally on formulas in headers and mark a record invalid when any required or extra data cell contains a formula. Preserve the expression for traceability without evaluating it or using a cached value.
-- **Consequences:** A data formula does not fail the whole workbook, but its record cannot be valid.
+- **Decision:** Open workbooks with `data_only=False`; fail structurally on formulas in headers and mark a record invalid when any required or extra data cell contains a formula. Preserve ordinary formula text directly and preserve an array formula through its documented text. Because an OOXML data-table formula has no ordinary expression, retain a deterministic description of its documented `ref`, `ca`, `dt2D`, `dtr`, `r1`, `r2`, `del1`, and `del2` attributes. Never evaluate a formula, use a cached value, or retain a Python object representation.
+- **Consequences:** A data formula does not fail the whole workbook, but its record cannot be valid. Formula traces are immutable and deterministic across repeated loads, including special formula objects returned by openpyxl.
 
 ## D47 — XLSX Workbook Opening Mode
 

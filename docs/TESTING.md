@@ -35,7 +35,7 @@ Tests cover the implemented Version 1 pipeline: CSV and XLSX discovery and struc
 - Explicit auxiliary-sheet logging and workbook failure when no usable worksheet exists.
 - Physical `source_row`, exact `source_sheet`, source filename, and preservation of empty intermediate rows.
 - Native dates, datetimes, integers, floats, booleans, numeric identifiers, and shared record validation.
-- Formula rejection in headers and record-level rejection in required and extra data cells without cached values.
+- Formula rejection in headers and record-level rejection in required and extra data cells without cached values, including deterministic traces for ordinary, array, and data-table formulas across repeated workbook loads.
 - Corrupted workbook failures with preserved causes and complete-operation failure across mixed sources.
 - Duplicate detection across CSV and XLSX records.
 - Active defusedxml integration and controlled rejection of a minimal prohibited XML entity declaration without dangerous expansion.

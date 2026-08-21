@@ -98,7 +98,7 @@ Before openpyxl loads an XLSX input, inspect its ZIP package without extracting 
 
 Compression-ratio enforcement is material when an individual uncompressed member exceeds 1 MiB or the package total uncompressed size exceeds 10 MiB. Logical-cell accounting uses the effective worksheet area and must detect sparse extreme coordinates rather than trusting only declared dimensions.
 
-Open XLSX input with `read_only=False`, `data_only=False`, and `keep_links=False`. Do not preserve external-workbook caches or access external resources. Formulas are never executed or interpreted. A formula in a header is a structural error; a formula in any required or extra data cell makes that record invalid while retaining the expression for traceability.
+Open XLSX input with `read_only=False`, `data_only=False`, and `keep_links=False`. Do not preserve external-workbook caches or access external resources. Formulas are never executed or interpreted. A formula in a header is a structural error; a formula in any required or extra data cell makes that record invalid. Retain ordinary formula text and the documented text of array formulas. Because a data-table formula has no ordinary expression, retain a deterministic description of its documented structural attributes. Never use cached values or Python object representations for formula traceability.
 
 Protected XML parsing through defusedxml must be active before XLSX processing. If that runtime protection is unavailable or disabled, fail structurally instead of processing the source with weaker silent defaults.
 
