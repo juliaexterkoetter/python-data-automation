@@ -4,7 +4,9 @@ A Python application for consolidating, validating, cleaning, and reporting sale
 
 ## Development Status
 
-The approved Version 1 pipeline is implemented: CSV and XLSX discovery and resource-bounded structural loading, record normalization, row-level validation, duplicate detection, record classification, summary calculation, and failure-safe Excel report publication. Final release-readiness work, demonstration assets, and presentation-oriented README content remain separate follow-up work.
+The approved Version 1 pipeline and release-readiness baseline are implemented: CSV and XLSX discovery and resource-bounded structural loading, record normalization, row-level validation, duplicate detection, record classification, summary calculation, and failure-safe Excel report publication. Demonstration assets and presentation-oriented content remain separate follow-up work.
+
+Version 1 was validated with Python 3.14.4, openpyxl 3.1.5, defusedxml 0.7.1, and pytest 9.1.1. The full Python 3.14 support status of every runtime dependency is not independently verified; compatibility is demonstrated by the project test suite in the validated environment.
 
 ## Documentation
 
@@ -15,4 +17,14 @@ The approved Version 1 pipeline is implemented: CSV and XLSX discovery and resou
 - [Decision log](docs/DECISIONS.md)
 - [Development workflow](docs/DEVELOPMENT.md)
 - [Testing strategy](docs/TESTING.md)
+- [Release readiness](docs/RELEASE_READINESS.md)
+- [Manual Excel smoke test](docs/EXCEL_SMOKE_TEST.md)
 - [Task backlog](docs/TASKS.md)
+
+## Reproducible Setup
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements-dev.txt
+.venv/bin/python -m pytest
+```

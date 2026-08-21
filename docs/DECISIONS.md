@@ -344,7 +344,7 @@ Statuses used in this log are `proposed`, `accepted`, and `superseded`. Proposed
 - **Date:** 2026-08-20
 - **Context:** Processing needs one unambiguous internal representation for accepted textual, date, and datetime values.
 - **Decision:** Represent every valid normalized `order_date` internally as `datetime.date`. Parse canonical text into a date and normalize an accepted `datetime.datetime` to its date component.
-- **Consequences:** External date formatting remains the responsibility of the future export stage.
+- **Consequences:** The exporter writes valid dates as native spreadsheet dates with the approved stable format.
 
 ## D36 — Amount and Order Date Whitespace
 
@@ -569,3 +569,27 @@ Statuses used in this log are `proposed`, `accepted`, and `superseded`. Proposed
 - **Context:** The standard CSV parser exposes a process-level field-size setting whose implicit default is not part of the project's deterministic source contract.
 - **Decision:** Apply an explicit maximum of 128 KiB (131,072 characters) to each CSV field during source loading, restore the previous process-level parser setting afterward, and treat a larger field as a controlled structural source error. Do not truncate the field or increase the limit silently.
 - **Consequences:** CSV behavior is deterministic for the single-threaded V1 process and unusually large fields fail visibly without altering surrounding parser state.
+
+## D64 — Dependency Reproducibility and Audit
+
+- **Status:** accepted
+- **Date:** 2026-08-21
+- **Context:** Release validation must be repeatable and dependency risk must be checked without adding audit tooling to the application runtime.
+- **Decision:** Pin direct runtime and development dependencies to the exact versions validated for Version 1. Make the development requirements include the runtime requirements. Use PyPA `pip-audit` as an external release check against both requirements files, record the tool version and result, and do not interpret a clean audit as proof that no vulnerability exists.
+- **Consequences:** A fresh environment can reproduce the validated direct dependency set. Transitive resolution and vulnerability feeds may change over time, so installation checks, tests, and audits must be repeated for a later release.
+
+## D65 — Atomicity and Durability Boundary
+
+- **Status:** accepted
+- **Date:** 2026-08-21
+- **Context:** Atomic replacement prevents an expected intermediate report state, but atomic namespace replacement is not the same guarantee as durable storage after abrupt system failure.
+- **Decision:** Continue building and validating the report in a temporary file in the output directory and publish it with `os.replace`. Describe this as atomic replacement when the filesystem provides the documented rename/replace contract. Do not claim durability against power loss, kernel crash, or physical storage failure, and do not add `fsync` in Version 1.
+- **Consequences:** Normal failures before replacement preserve the previous report. Abrupt termination may leave a temporary file, and persistence of the latest replacement across system or storage failure remains outside the Version 1 guarantee.
+
+## D66 — Trusted Input Directory
+
+- **Status:** accepted
+- **Date:** 2026-08-21
+- **Context:** Source discovery and later file opening are separate filesystem operations, so a local writer could replace an entry between validation and use.
+- **Decision:** Treat `data/input/` as a local directory controlled by the trusted operator. Continue rejecting symlinks observed during normal discovery, but do not claim protection against a concurrent local attacker with write access. Accept the remaining time-of-check/time-of-use window for Version 1; do not add `openat`, `O_NOFOLLOW`, directory-descriptor traversal, or private input copies without a new decision.
+- **Consequences:** Operators must prevent untrusted local users or processes from modifying the input directory during a run. Remote or concurrent hostile-directory processing is outside the supported trust model.

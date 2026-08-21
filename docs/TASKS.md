@@ -6,10 +6,10 @@ None.
 
 ## Planned
 
-1. Complete release-readiness dependency pinning, vulnerability-audit guidance, risk documentation, and the manual Excel smoke-test checklist.
-2. Create representative sample input data.
-3. Validate final publication materials and anonymized examples.
-4. Complete the presentation-oriented README content.
+1. Create representative demonstration input data.
+2. Validate final publication materials and anonymized examples.
+3. Complete the presentation-oriented README content.
+4. Perform the manual Microsoft Excel smoke test.
 
 ## Completed
 
@@ -17,7 +17,7 @@ None.
 - Reframed project scope for a real, maintainable application.
 - Analyzed requirement ambiguities, reliability risks, and testing needs.
 - Established the permanent documentation structure.
-- Approved and documented business decisions D01–D63.
+- Approved and documented business decisions D01–D66.
 - Approved the initial module responsibility boundaries.
 - Resolved pre-merge ambiguities for XLSX worksheet classification, monetary precision, empty input, email validation, source-row semantics, and reserved traceability columns.
 - Implemented non-recursive, case-insensitive CSV discovery with explicit missing-input failures.
@@ -40,3 +40,6 @@ None.
 - Replaced the workbook-derived expectation with an immutable logical model built directly from processing projections and summary, plus independent saved-workbook invariants.
 - Added protected XML parsing, non-extracting XLSX package preflight, resource limits, disabled external-link caches, and deterministic CSV field-size enforcement.
 - Added safe boundary and adversarial regression coverage for D59–D63 without creating large or dangerous fixtures.
+- Approved and documented release-readiness decisions D64–D66.
+- Pinned the validated direct runtime and development dependencies.
+- Documented the dependency-audit procedure and result, atomicity-versus-durability boundary, trusted input directory, residual TOCTOU risk, and manual Excel smoke-test checklist.

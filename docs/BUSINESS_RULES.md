@@ -80,6 +80,8 @@ A complete-schema worksheet is usable only when it contains at least one data re
 
 XLSX discovery is non-recursive, case-insensitive by extension, limited to regular files directly inside the input directory, and does not follow symlinks.
 
+`data/input/` is a trusted local operator directory. The Version 1 workflow is not designed to resist a concurrent local attacker who can replace directory entries while a run is in progress. Operators must prevent untrusted writes during processing.
+
 Native numeric `order_id` values are invalid and are not converted to text. Native integer amounts are converted exactly to `Decimal`; native float amounts use `Decimal(str(value))`, never `Decimal(float_value)`. Boolean values are invalid in every business field.
 
 Before openpyxl loads an XLSX input, inspect its ZIP package without extracting members. Reject empty or non-XLSX ZIPs, invalid or missing content-types, workbook, or workbook-relationships parts, unsafe, external, duplicate, or missing referenced worksheet targets, unsupported compression methods, CRC failures in any member, suspicious or duplicate member names, encrypted members, prohibited XML, and packages that exceed any approved resource limit. Resolve referenced worksheet parts through the workbook's OOXML relationships without assuming conventional package paths. Stored and deflated ZIP members are the only supported compression methods.
@@ -129,6 +131,8 @@ Record worksheets use the approved business-field order followed by the case-sen
 Export monetary values as exact canonical two-place text without float conversion. Export dates as native spreadsheet dates with a stable `yyyy-mm-dd` format. Preserve identifiers as text.
 
 An existing `data/output/sales_report.xlsx` may be replaced. Generate the new workbook in a temporary file and atomically replace the final path only after successful generation.
+
+Atomic replacement prevents an expected intermediate destination state when supported by the filesystem. It does not guarantee durability across power loss, kernel crash, or physical storage failure.
 
 Input-controlled text whose first significant character after initial ASCII whitespace is `=`, `+`, `-`, or `@` must be prefixed with an apostrophe and exported as text. This includes retained `FormulaValue` expressions, source metadata, extra columns, and extra-column names. The mitigation must prevent formula execution while preserving the underlying data as much as reasonably possible.
 
