@@ -6,6 +6,7 @@ import argparse
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import Final, Sequence
 
 from openpyxl import load_workbook
@@ -34,11 +35,15 @@ INVALID: Final = "#C2413A"
 DUPLICATE: Final = "#8B5CF6"
 SUCCESS: Final = "#15803D"
 
-FONT_REGULAR_PATH: Final = Path(
-    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+FONT_REGULAR_CANDIDATES: Final = (
+    "DejaVuSans.ttf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    "/usr/local/share/fonts/DejaVuSans.ttf",
 )
-FONT_BOLD_PATH: Final = Path(
-    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+FONT_BOLD_CANDIDATES: Final = (
+    "DejaVuSans-Bold.ttf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+    "/usr/local/share/fonts/DejaVuSans-Bold.ttf",
 )
 
 
@@ -71,10 +76,17 @@ class TableSpec:
 
 
 def _font(size: int, *, bold: bool = False) -> ImageFont.FreeTypeFont:
-    path = FONT_BOLD_PATH if bold else FONT_REGULAR_PATH
-    if not path.is_file():
-        raise PortfolioRenderError(f"required font is unavailable: {path}")
-    return ImageFont.truetype(str(path), size=size)
+    candidates = FONT_BOLD_CANDIDATES if bold else FONT_REGULAR_CANDIDATES
+    for candidate in candidates:
+        try:
+            return ImageFont.truetype(candidate, size=size)
+        except OSError:
+            continue
+    style = "bold" if bold else "regular"
+    raise PortfolioRenderError(
+        f"required DejaVu Sans {style} font is unavailable; checked: "
+        f"{', '.join(candidates)}"
+    )
 
 
 def _display_value(value: object) -> str:
@@ -528,13 +540,48 @@ def _validate_pngs(
         path = output_dir / filename
         if not path.is_file() or path.stat().st_size == 0:
             raise PortfolioRenderError(f"rendered PNG is missing or empty: {path}")
-        with Image.open(path) as image:
-            image.verify()
-        with Image.open(path) as image:
-            if image.format != "PNG" or image.size != dimensions:
-                raise PortfolioRenderError(
-                    f"rendered PNG has invalid format or dimensions: {path}"
-                )
+        try:
+            with Image.open(path) as image:
+                image.verify()
+            with Image.open(path) as image:
+                if image.format != "PNG" or image.size != dimensions:
+                    raise PortfolioRenderError(
+                        f"rendered PNG has invalid format or dimensions: {path}"
+                    )
+        except OSError as error:
+            raise PortfolioRenderError(
+                f"rendered PNG cannot be read: {path}"
+            ) from error
+
+
+def _render_assets(
+    worksheets: dict[str, WorksheetData],
+    specs: Sequence[TableSpec],
+    output_dir: Path,
+) -> tuple[tuple[str, object], ...]:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    summary_metrics = _render_summary(
+        worksheets["Summary"], output_dir / "01-summary.png"
+    )
+    for spec in specs:
+        _render_table(spec, output_dir / spec.filename)
+    return summary_metrics
+
+
+def _validate_deterministic_content(
+    expected_dir: Path,
+    actual_dir: Path,
+    specs: Sequence[TableSpec],
+) -> None:
+    filenames = ("01-summary.png", *(spec.filename for spec in specs))
+    for filename in filenames:
+        expected = (expected_dir / filename).read_bytes()
+        actual = (actual_dir / filename).read_bytes()
+        if expected != actual:
+            raise PortfolioRenderError(
+                f"rendered PNG content differs from the workbook: "
+                f"{actual_dir / filename}"
+            )
 
 
 def render_portfolio_screenshots(
@@ -547,20 +594,17 @@ def render_portfolio_screenshots(
     worksheets = _load_worksheet_data(workbook_path)
     specs = _table_specs(worksheets)
     if validate_only:
-        summary_metrics = tuple(
-            (row[0], row[1])
-            for row in worksheets["Summary"].rows
-            if row[0] is not None and row[1] is not None
-        )
+        with TemporaryDirectory(prefix="portfolio-render-validation-") as directory:
+            expected_dir = Path(directory)
+            summary_metrics = _render_assets(worksheets, specs, expected_dir)
+            _validate_semantics(worksheets, specs, summary_metrics)
+            _validate_pngs(expected_dir, specs)
+            _validate_pngs(output_dir, specs)
+            _validate_deterministic_content(expected_dir, output_dir, specs)
     else:
-        output_dir.mkdir(parents=True, exist_ok=True)
-        summary_metrics = _render_summary(
-            worksheets["Summary"], output_dir / "01-summary.png"
-        )
-        for spec in specs:
-            _render_table(spec, output_dir / spec.filename)
-    _validate_semantics(worksheets, specs, summary_metrics)
-    _validate_pngs(output_dir, specs)
+        summary_metrics = _render_assets(worksheets, specs, output_dir)
+        _validate_semantics(worksheets, specs, summary_metrics)
+        _validate_pngs(output_dir, specs)
 
 
 def _arguments() -> argparse.Namespace:

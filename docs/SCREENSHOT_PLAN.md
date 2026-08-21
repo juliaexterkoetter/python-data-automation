@@ -2,6 +2,29 @@
 
 Use only the fictitious demonstration data. Before capturing, hide usernames, unrelated applications, local personal paths, notifications, account details, and any real data.
 
+## Programmatic portfolio renderings
+
+The reproducible assets in `portfolio/screenshots/` are generated from the real `data/demo/output/sales_report.xlsx` workbook by `scripts/render_portfolio_screenshots.py`. They are presentation renderings for LinkedIn, Upwork, GitHub, and other portfolio use; they are not screenshots of the Microsoft Excel interface.
+
+- `01-summary.png`: the five Summary metrics and overlap note.
+- `02-valid-records.png`: selected columns from all five valid records.
+- `03-invalid-records.png`: selected columns and validation feedback from all four invalid records.
+- `04-duplicates.png`: selected columns and validation feedback from all four duplicate occurrences.
+
+Generate and validate them with the dedicated portfolio environment:
+
+```bash
+.venv/bin/python -m pip install -r requirements-portfolio.txt
+.venv/bin/python -m scripts.render_portfolio_screenshots
+.venv/bin/python -m scripts.render_portfolio_screenshots --validate-only
+```
+
+Validation regenerates the expected assets in a temporary directory and requires byte-identical output. It does not use OCR or modify the source workbook.
+
+## Manual capture and Excel smoke-test evidence
+
+The following capture plan remains optional and pending. Real Microsoft Excel views provide manual compatibility and visual evidence and are not replaced by the programmatic renderings above. Do not claim that this evidence exists until the corresponding application check has actually been completed.
+
 ## 01-input-files
 
 - Window: file explorer or terminal directory listing.
@@ -49,4 +72,4 @@ Use only the fictitious demonstration data. Before capturing, hide usernames, un
 - Suggested filename: `05-duplicates.png`.
 - Caption: “Every repeated identifier remains visible, including records that are also invalid.”
 
-Screenshots must come from the real generated workbook in Microsoft Excel. Do not create artificial Excel screenshots.
+The worksheet screenshots in this manual set must come from the real generated workbook opened in Microsoft Excel. Do not synthesize Excel interface screenshots.
