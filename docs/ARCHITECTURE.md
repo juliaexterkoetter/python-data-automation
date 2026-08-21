@@ -1,6 +1,6 @@
 # Architecture
 
-The initial architecture is approved and partially implemented. CSV and XLSX discovery and structural loading, record normalization, row-level validation, duplicate detection, record classification, and summary calculation are implemented; report generation remains planned. The architecture uses focused modules and avoids unnecessary layers or global mutable state.
+The approved Version 1 architecture is implemented. CSV and XLSX discovery and structural loading, record normalization, row-level validation, duplicate detection, record classification, summary calculation, and failure-safe report publication use focused modules without unnecessary layers or global mutable state.
 
 ## Processing Pipeline
 
@@ -78,13 +78,15 @@ A structural or operational failure stops successful publication and results in 
 
 ### `src/exporter.py`
 
-- Generate the required workbook and worksheets.
-- Preserve required source metadata and extra input columns.
+- Generate exactly the approved worksheets in deterministic order from an existing `ProcessingResult` and `ProcessingSummary`.
+- Preserve record projection order, required source metadata, and the case-sensitive sorted global union of extra input columns.
 - Represent duplicate count as an independent metric and make overlapping classifications clear.
-- Export input-controlled textual values without allowing spreadsheet formula execution.
-- Preserve a stable and documented column order and apply practical formatting.
-- Write to a temporary file and atomically replace the final report only after successful generation.
-- Surface generation, permission, and replacement failures as operational errors.
+- Serialize validation errors deterministically without overwriting similarly named input columns.
+- Preserve monetary values as exact canonical two-place text and dates as native stable-format values.
+- Prefix dangerous input-controlled text with an apostrophe and retain input formulas only as safe, non-executable text.
+- Validate XLSX row, column, text-length, XML-content, and supported-type constraints without silent truncation or coercion.
+- Build an immutable logical report model directly from the supplied projections, summary, column policy, and approved value conversions; render the workbook without making business decisions; independently reopen the saved temporary workbook; and compare worksheet order, complete cell content, projections, relevant formats, and formula cell types before atomic publication with `os.replace`.
+- Surface predictable construction, conversion, save, close, permission, validation, cleanup, and replacement failures as `ReportExportError` with preserved causes.
 
 ## Data Model and Flow
 
@@ -110,11 +112,11 @@ Row-level validation errors, such as a malformed email, unsupported textual date
 
 An XLSX worksheet with none of the required columns is auxiliary: it is skipped with an explicit non-data log entry. A worksheet with some but not all required columns is a malformed data source. A complete schema is processed. A workbook without any complete-schema worksheet is structurally invalid.
 
-Structural and operational failures include missing input directories, no supported or usable sources, partial required schemas, reserved-column collisions, unreadable or malformed files, and failed report publication. They are logged clearly, prevent a successful run, and produce a non-zero exit status. They must not be converted into ordinary invalid rows or hidden behind an apparently complete or empty report.
+Structural and operational failures include missing input directories, no supported or usable sources, partial required schemas, reserved-column collisions, unreadable or malformed files, unrepresentable output data, and failed report publication. They are logged clearly, prevent a successful run, and produce a non-zero exit status. They must not be converted into ordinary invalid rows or hidden behind an apparently complete or empty report. Unexpected programming errors are not converted into operational success or silently coerced output.
 
 ## Dependencies
 
-- `openpyxl` for native Excel values and multi-worksheet XLSX processing, and later workbook output.
+- `openpyxl` for native Excel values, multi-worksheet XLSX processing, and workbook output.
 - `pytest` as a development dependency for automated tests.
 
-The implemented loading and processing pipeline does not require `pandas`. Use the standard library for paths, logging, `Decimal`, dataclasses, temporary files, and atomic replacement where appropriate.
+The implemented pipeline does not require `pandas`. It uses the standard library for paths, logging, `Decimal`, dataclasses, temporary files, ZIP-safe text preservation, and atomic replacement.

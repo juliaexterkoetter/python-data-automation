@@ -8,13 +8,9 @@ None.
 
 1. Plan the next implementation increment against the approved rules and architecture.
 2. Add runtime dependencies only when required by an approved increment.
-3. Implement Excel export with formula-injection protection and atomic replacement.
-4. Extend logging, explicit errors, and non-zero failure status with each pipeline stage.
-5. Create unit tests alongside each behavior.
-6. Create integration and failure-path tests for later pipeline stages.
-7. Create representative sample input data.
-8. Validate complete end-to-end execution and record accounting.
-9. Complete the README after the application is functional.
+3. Create representative sample input data.
+4. Validate final publication materials and anonymized examples.
+5. Complete the presentation-oriented README content.
 
 ## Completed
 
@@ -36,3 +32,10 @@ None.
 - Implemented immutable summary calculation with independent classification counts and valid, unique paid-total eligibility.
 - Added exact Decimal aggregation for zero, normalized values, and multiple very large amounts without float conversion.
 - Added summary unit and mixed-source integration coverage, including overlap, non-eligible records, non-mutation, and structural-failure boundaries.
+- Approved and documented output decisions D48–D58 for workbook structure, columns, errors, exact money, formula safety, atomic publication, no silent loss, determinism, strict types, empty CSV headers, and negative signed float zero.
+- Implemented the deterministic four-worksheet Excel report without recalculating processing results or summary values.
+- Implemented exact monetary text, collision-safe error columns, safe formula-like text, stable date output, and complete traceability and extra-column preservation.
+- Implemented same-directory temporary generation, workbook validation, atomic replacement, cleanup, explicit export errors, and non-zero main-pipeline failure status.
+- Added workbook round-trip, projection, formula-safety, technical-limit, determinism, end-to-end, and fault-injection tests.
+- Hardened temporary validation against logically incomplete but structurally valid workbooks and rejected untraceable empty headers and lossy negative signed float zero.
+- Replaced the workbook-derived expectation with an immutable logical model built directly from processing projections and summary, plus independent saved-workbook invariants.
