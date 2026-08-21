@@ -1,6 +1,6 @@
 # Testing Strategy
 
-Tests are implemented incrementally with each feature. CSV and XLSX discovery and structural loading, record normalization, validation, duplicate detection, and classification are currently covered; tests for later pipeline stages remain planned.
+Tests are implemented incrementally with each feature. CSV and XLSX discovery and structural loading, record normalization, validation, duplicate detection, classification, and summary calculation are currently covered; tests for report generation remain planned.
 
 ## Implemented CSV Coverage
 
@@ -37,6 +37,19 @@ Tests are implemented incrementally with each feature. CSV and XLSX discovery an
 - Formula rejection in headers and record-level rejection in required and extra data cells without cached values.
 - Corrupted workbook failures with preserved causes and complete-operation failure across mixed sources.
 - Duplicate detection across CSV and XLSX records.
+
+## Implemented Summary Coverage
+
+- Total, valid, invalid, and duplicate counts derived from the existing classification projections.
+- Independent invalid and duplicate counts, including records present in both classifications.
+- All occurrences of repeated identifiers included in the duplicate count.
+- Paid-total eligibility limited to valid, unique records normalized to `paid`.
+- Exclusion of invalid, duplicate, pending, cancelled, and refunded records from the paid total.
+- Decimal zero when no record is eligible and exact two-place aggregation of normalized values.
+- Multiple very large monetary values summed without silent context-precision loss or float conversion.
+- Combined CSV and XLSX inputs with source metadata and extra columns left unchanged.
+- Summary calculation without mutation of the processing result or its records.
+- Structural input failure stopping execution before summary calculation.
 
 ## Core Invariants
 

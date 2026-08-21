@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 from openpyxl import Workbook
 
+import src.main as main_module
 from src.main import run
 
 
@@ -25,6 +26,7 @@ def test_run_returns_zero_and_logs_success(tmp_path: Path, caplog) -> None:
     assert "Discovered 1 CSV input file(s)." in caplog.text
     assert "Successfully loaded 1 record(s)" in caplog.text
     assert "Processed 1 record(s): 1 valid, 0 invalid, 0 duplicate." in caplog.text
+    assert "Summary: 1 total, 1 valid, 0 invalid, 0 duplicate, paid amount 149.90." in caplog.text
 
 
 def test_run_returns_nonzero_and_logs_structural_failure(
@@ -169,3 +171,24 @@ def test_run_returns_nonzero_for_structurally_invalid_xlsx(
     assert status == 1
     assert "XLSX structural error" in caplog.text
     assert "missing required columns" in caplog.text
+
+
+def test_run_does_not_calculate_summary_after_structural_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    (tmp_path / "invalid.csv").write_text(
+        "order_id,status\n00123,paid\n",
+        encoding="utf-8",
+    )
+
+    def unexpected_summary_calculation(_result: object) -> None:
+        pytest.fail("summary must not be calculated after structural failure")
+
+    monkeypatch.setattr(
+        main_module,
+        "calculate_summary",
+        unexpected_summary_calculation,
+    )
+
+    assert run(tmp_path) == 1
