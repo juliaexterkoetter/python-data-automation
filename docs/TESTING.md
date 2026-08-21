@@ -1,13 +1,13 @@
 # Testing Strategy
 
-Tests are implemented incrementally with each feature. CSV and XLSX discovery and structural loading, record normalization, validation, duplicate detection, classification, and summary calculation are currently covered; tests for report generation remain planned.
+Tests cover the implemented Version 1 pipeline: CSV and XLSX discovery and structural loading, record normalization, validation, duplicate detection, classification, summary calculation, workbook generation, and atomic report publication.
 
 ## Implemented CSV Coverage
 
 - Missing input directory and absence of supported CSV files.
 - Case-insensitive, non-recursive discovery of regular `.csv` files.
 - UTF-8 and UTF-8 BOM input, plus rejection of invalid UTF-8 bytes.
-- Required comma delimiter, header presence, exact case-sensitive header names, duplicate headers, and required columns.
+- Required comma delimiter, header presence, non-empty exact case-sensitive header names, duplicate headers, and required columns.
 - Reserved traceability-column collisions and preservation of extra columns.
 - Textual `order_id` values with leading zeros preserved.
 - `source_file`, null `source_sheet`, and physical 1-based `source_row`, including multiline records.
@@ -50,6 +50,22 @@ Tests are implemented incrementally with each feature. CSV and XLSX discovery an
 - Combined CSV and XLSX inputs with source metadata and extra columns left unchanged.
 - Summary calculation without mutation of the processing result or its records.
 - Structural input failure stopping execution before summary calculation.
+
+## Implemented Report Coverage
+
+- Exact four-worksheet structure and approved summary labels, values, order, and overlap note.
+- Export of the supplied processing projections and summary without recalculation.
+- Deterministic global extra-column union, collision-safe validation-error columns, source metadata, and record order.
+- Exact two-place monetary text, textual identifiers, native dates, and strict supported-type handling.
+- Formula-injection protection for every approved trigger, initial ASCII whitespace, retained input formulas, extra values and names, and source metadata.
+- Independent logical round-trip verification with `data_only=False`, including complete values and row order, relevant formats, non-formula cell types, and preserved carriage returns.
+- Pre-save renderer fault injection proving that omitted records or headers, changed headers, reversed rows, and failed formula neutralization cannot alter the independent logical expectation or be published.
+- XLSX row, column, UTF-16 cell-length, XML-character, finite-float, and unsupported-type validation without silent data loss.
+- Output-directory and temporary-file creation, first publication, replacement, complete logical workbook validation, temporary cleanup, and preservation of an existing report across injected construction, conversion, save, close, permission, logical corruption, and replacement failures.
+- Explicit rejection of negative signed float zero when its sign cannot survive XLSX numeric serialization.
+- Deterministic logical workbook comparison across repeated exports.
+- Complete CSV and XLSX processing through summary calculation and reopened final report.
+- Main-pipeline success only after publication and controlled non-zero status for structural or export failures.
 
 ## Core Invariants
 
@@ -155,7 +171,7 @@ Test handling of:
 
 ```bash
 .venv/bin/python -m pytest
-.venv/bin/python -m pytest tests/test_validator.py tests/test_processor.py tests/test_xlsx_processor.py tests/test_main.py
+.venv/bin/python -m pytest tests/test_validator.py tests/test_processor.py tests/test_xlsx_processor.py tests/test_summary.py tests/test_exporter.py tests/test_main.py
 ```
 
 The complete-suite command is confirmed for the current development environment. Additional commands will be documented when later test modules and coverage tooling are added.

@@ -441,3 +441,91 @@ Statuses used in this log are `proposed`, `accepted`, and `superseded`. Proposed
 - **Context:** Version 1 prioritizes deterministic behavior for modest workbooks over streaming optimizations that rely on declared worksheet dimensions.
 - **Decision:** Open XLSX workbooks with `read_only=False` in Version 1 and do not introduce arbitrary size limits in this increment.
 - **Consequences:** Very large workbooks remain a documented operational memory risk.
+
+## D48 — Output Workbook Structure and Presentation
+
+- **Status:** accepted
+- **Date:** 2026-08-21
+- **Context:** The final report needs a stable client-facing structure without unnecessary visual complexity.
+- **Decision:** Generate exactly `Summary`, `Valid Records`, `Invalid Records`, and `Duplicates`, in that order. Present only the five approved summary metrics using the approved English labels and include the note `Invalid and duplicate record counts may overlap.` Apply only practical formatting such as bold headers and stable date formats; do not add charts, merged cells, themes, decorations, or unapproved metrics.
+- **Consequences:** The workbook structure and logical presentation are deterministic and remain focused on operational review.
+
+## D49 — Output Record Column Policy
+
+- **Status:** accepted
+- **Date:** 2026-08-21
+- **Context:** Records from different sources can contain different extra columns, and output order must not depend on source order.
+- **Decision:** Order record columns as the six known business fields, the case-sensitive sorted global union of extra columns from all processed records, `source_file`, `source_sheet`, `source_row`, and a validation-error column where applicable. Use the same base columns for all record worksheets. Include validation errors in `Invalid Records` and `Duplicates`, but not `Valid Records`. Select `validation_errors`, `validation_errors_2`, and so on deterministically when an input column already uses a candidate name.
+- **Consequences:** No client column is overwritten or discarded, heterogeneous sources produce stable schemas, and missing values are represented by empty cells.
+
+## D50 — Validation Error Serialization
+
+- **Status:** accepted
+- **Date:** 2026-08-21
+- **Context:** Multiple structured validation errors need a compact and deterministic worksheet representation.
+- **Decision:** Serialize each error as `field [code]: message` and join multiple errors with ` | ` in their original order. A duplicate without validation errors receives an empty error cell. Do not use JSON or additional error worksheets.
+- **Consequences:** Error details remain readable, complete, ordered, and attributable to their record.
+
+## D51 — Exact Monetary Export
+
+- **Status:** accepted
+- **Date:** 2026-08-21
+- **Context:** Numeric XLSX cells cannot preserve arbitrary Decimal precision and may silently round large monetary values.
+- **Decision:** Export `amount` and `Total Paid Amount (USD)` as canonical two-place text derived directly from `Decimal`, without conversion to float. The exact textual value must survive an XLSX round trip.
+- **Consequences:** Version 1 prioritizes monetary integrity over direct use of exported monetary cells in Excel formulas.
+
+## D52 — Output Text Safety
+
+- **Status:** accepted
+- **Date:** 2026-08-21
+- **Context:** Input-controlled text and retained input formulas must never become executable workbook formulas.
+- **Decision:** Treat input-controlled text as dangerous when its first significant character after initial ASCII whitespace is `=`, `+`, `-`, or `@`, and prefix the original text with an apostrophe. Apply this to known fields, extra values and names, source metadata, `FormulaValue`, and legitimately text-converted input values. Never execute formulas or use cached formula results. Reject XML/XLSX-incompatible characters explicitly rather than removing them.
+- **Consequences:** Protected values remain traceable as text and must have a non-formula cell type after round-trip inspection.
+
+## D53 — Atomic Report Publication
+
+- **Status:** accepted
+- **Date:** 2026-08-21
+- **Context:** A failed report build or publication must not replace the last valid report with a partial file.
+- **Decision:** Publish only to `data/output/sales_report.xlsx`. Create the output directory when needed, create and close a temporary file descriptor in that directory, build and save the complete workbook to the temporary path, close the workbook, validate the temporary file, and then use `os.replace` for atomic publication. Clean any remaining temporary file in `finally`. Preserve predictable causes with exception chaining and do not mask unexpected programming errors.
+- **Consequences:** Success is reported only after replacement; build, conversion, save, close, and replacement failures preserve the previous report whenever the filesystem contract permits.
+
+## D54 — No Silent Output Data Loss
+
+- **Status:** accepted
+- **Date:** 2026-08-21
+- **Context:** XLSX has hard limits and representational constraints that could otherwise truncate or discard client data.
+- **Decision:** Never truncate, remove, silently coerce, replace with empty content, or ignore data that cannot be represented correctly. Validate worksheet row and column limits, cell text length, and XML compatibility before publication, and fail explicitly with `ReportExportError` when a limit is exceeded.
+- **Consequences:** An unrepresentable dataset produces no new report and leaves any previous valid report intact.
+
+## D55 — Deterministic Logical Workbook Output
+
+- **Status:** accepted
+- **Date:** 2026-08-21
+- **Context:** Auditability requires repeatable workbook content even though XLSX ZIP bytes may contain non-deterministic package metadata.
+- **Decision:** The same processed input and summary must produce the same worksheet order, column order, record order, error serialization, and logical cell values. Byte-identical XLSX archives are not required.
+- **Consequences:** Tests compare reopened logical workbook content rather than archive bytes.
+
+## D56 — Strict Export Type Handling
+
+- **Status:** accepted
+- **Date:** 2026-08-21
+- **Context:** A generic string fallback can hide internal corruption and change client data meaning merely to make workbook saving succeed.
+- **Decision:** Convert only explicitly supported value types. Do not use `str(value)` as a fallback for unexpected types; raise `ReportExportError` instead. Unexpected programming exceptions outside predictable export failures must continue to escape.
+- **Consequences:** Unsupported values fail visibly without silent coercion or partial publication.
+
+## D57 — Empty CSV Header Columns
+
+- **Status:** accepted
+- **Date:** 2026-08-21
+- **Context:** A CSV can contain the complete required schema and an additional empty header whose payload would become an unidentified output column.
+- **Decision:** Reject every empty CSV header column as a structural source error, whether it is internal, trailing, or one of multiple empty columns. Do not normalize, rename, remove, or assign a placeholder to an empty header. The exporter must also reject an empty processed-record column name as a defensive integrity check.
+- **Consequences:** Unidentified client columns cannot enter processing or be published without traceability.
+
+## D58 — Negative Signed Float Zero Export
+
+- **Status:** accepted
+- **Date:** 2026-08-21
+- **Context:** XLSX numeric serialization does not preserve the observable distinction between `float -0.0` and positive zero.
+- **Decision:** Reject negative signed float zero with `ReportExportError`. Continue to allow positive `float 0.0` where floats are otherwise supported. Do not convert negative signed zero to text without a separate approved decision.
+- **Consequences:** The exporter fails explicitly instead of silently losing the sign of an input-controlled float value.

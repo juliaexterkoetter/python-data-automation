@@ -10,6 +10,8 @@ Records use the fields `order_id`, `customer_name`, `email`, `order_date`, `amou
 
 Extra input columns are allowed and must be preserved. Missing required columns are structural source errors, not row-level validation errors.
 
+Every CSV header name must be non-empty. An empty internal or trailing header is a structural source error and must not be renamed, removed, or assigned a placeholder.
+
 ## Order Identity and Duplicates
 
 `order_id` is a textual, case-sensitive identifier. Leading and trailing whitespace is removed, while capitalization and leading zeros are preserved.
@@ -102,11 +104,19 @@ Row-level validation failures are retained as invalid records and do not by them
 
 ## Reporting
 
-The report contains the worksheets required by `requirements.md`. Valid records are both valid and unique. The total paid amount includes only records that are valid, unique, and normalized to `status == "paid"`.
+The report contains exactly `Summary`, `Valid Records`, `Invalid Records`, and `Duplicates`, in that order. Valid records are both valid and unique. The total paid amount includes only records that are valid, unique, and normalized to `status == "paid"`. Invalid and duplicate records may overlap and appear in both corresponding worksheets.
+
+Record worksheets use the approved business-field order followed by the case-sensitive sorted global union of extra columns, source metadata, and validation errors where applicable. No input column may be discarded or overwritten. Multiple validation errors are serialized in their existing order as `field [code]: message`, separated by ` | `.
+
+Export monetary values as exact canonical two-place text without float conversion. Export dates as native spreadsheet dates with a stable `yyyy-mm-dd` format. Preserve identifiers as text.
 
 An existing `data/output/sales_report.xlsx` may be replaced. Generate the new workbook in a temporary file and atomically replace the final path only after successful generation.
 
-Input-controlled text beginning with a spreadsheet formula-triggering character, including `=`, `+`, `-`, or `@`, must be exported safely as text. The mitigation must prevent formula execution while preserving the underlying data as much as reasonably possible.
+Input-controlled text whose first significant character after initial ASCII whitespace is `=`, `+`, `-`, or `@` must be prefixed with an apostrophe and exported as text. This includes retained `FormulaValue` expressions, source metadata, extra columns, and extra-column names. The mitigation must prevent formula execution while preserving the underlying data as much as reasonably possible.
+
+Output must not silently truncate, remove, coerce, replace, or ignore data. XLSX limits, incompatible XML content, and unexpected value types cause an explicit export failure before publication. Logical workbook content is deterministic for the same processed records and summary; byte-identical XLSX archives are not required.
+
+Negative signed float zero is not representable under the approved exact-output guarantees and causes an explicit export failure. Positive float zero remains supported where native float values are otherwise allowed.
 
 ## Pending Business Decisions
 

@@ -1,10 +1,11 @@
-"""Application entry point for the currently implemented input pipeline."""
+"""Application entry point for the complete Version 1 reporting pipeline."""
 
 from __future__ import annotations
 
 import logging
 from pathlib import Path
 
+from src.exporter import ReportExportError, export_report
 from src.processor import (
     StructuralInputError,
     discover_supported_files,
@@ -16,10 +17,14 @@ from src.summary import calculate_summary
 
 LOGGER = logging.getLogger(__name__)
 DEFAULT_INPUT_DIR = Path("data/input")
+DEFAULT_OUTPUT_PATH = Path("data/output/sales_report.xlsx")
 
 
-def run(input_dir: Path = DEFAULT_INPUT_DIR) -> int:
-    """Discover, load, and process supported input sources."""
+def run(
+    input_dir: Path = DEFAULT_INPUT_DIR,
+    output_path: Path = DEFAULT_OUTPUT_PATH,
+) -> int:
+    """Process supported sources and publish the complete Excel report."""
     try:
         source_files = discover_supported_files(input_dir)
         csv_count = sum(path.suffix.lower() == ".csv" for path in source_files)
@@ -50,8 +55,14 @@ def run(input_dir: Path = DEFAULT_INPUT_DIR) -> int:
             summary.duplicate_records,
             summary.total_paid_amount,
         )
+        LOGGER.info("Generating Excel report at '%s'.", output_path)
+        export_report(result, summary, output_path)
+        LOGGER.info("Successfully published Excel report at '%s'.", output_path)
     except StructuralInputError as error:
         LOGGER.error("Input processing failed: %s", error)
+        return 1
+    except ReportExportError as error:
+        LOGGER.error("%s", error)
         return 1
 
     return 0

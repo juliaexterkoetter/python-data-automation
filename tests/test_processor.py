@@ -227,6 +227,27 @@ def test_load_csv_file_rejects_duplicate_header_columns(tmp_path: Path) -> None:
         load_csv_file(file_path)
 
 
+@pytest.mark.parametrize(
+    "header",
+    [
+        f"{VALID_HEADER},",
+        "order_id,customer_name,,email,order_date,amount,status",
+        f"{VALID_HEADER},extra,",
+        f"{VALID_HEADER},,",
+    ],
+)
+def test_load_csv_file_rejects_any_empty_header_column(
+    tmp_path: Path,
+    header: str,
+) -> None:
+    value_count = len(header.split(","))
+    row = ",".join([*VALID_ROW.split(","), *(["value"] * (value_count - 6))])
+    file_path = write_csv(tmp_path / "orders.csv", f"{header}\n{row}\n")
+
+    with pytest.raises(CsvStructuralError, match="empty header column"):
+        load_csv_file(file_path)
+
+
 def test_load_csv_file_preserves_extra_columns_and_adds_traceability(
     tmp_path: Path,
 ) -> None:

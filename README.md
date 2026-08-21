@@ -4,7 +4,7 @@ A Python application for consolidating, validating, cleaning, and reporting sale
 
 ## Development Status
 
-The initial requirements, business rules, and architecture have been approved and documented. CSV and XLSX discovery and structural loading, record normalization, row-level validation, duplicate detection, record classification, and summary calculation are implemented; report generation remains planned.
+The approved Version 1 pipeline is implemented: CSV and XLSX discovery and structural loading, record normalization, row-level validation, duplicate detection, record classification, summary calculation, and failure-safe Excel report publication. Final demonstration assets and presentation-oriented README content remain separate follow-up work.
 
 ## Documentation
 

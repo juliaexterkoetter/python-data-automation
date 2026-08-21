@@ -177,6 +177,9 @@ def _validate_header(header: list[str], file_path: Path) -> None:
     if not header or not any(header):
         raise CsvStructuralError(file_path, "missing header")
 
+    if any(column == "" for column in header):
+        raise CsvStructuralError(file_path, "empty header column")
+
     duplicate_columns = sorted(
         {column for column in header if header.count(column) > 1}
     )
