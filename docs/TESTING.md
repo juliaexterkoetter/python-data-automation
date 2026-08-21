@@ -177,8 +177,21 @@ Test handling of:
 ## Test Commands
 
 ```bash
+.venv/bin/python -m pip install -r requirements-dev.txt
 .venv/bin/python -m pytest
 .venv/bin/python -m pytest tests/test_validator.py tests/test_processor.py tests/test_xlsx_processor.py tests/test_summary.py tests/test_exporter.py tests/test_main.py
+.venv/bin/python -m compileall src tests
+.venv/bin/python -m pip check
+git diff --check
 ```
 
 The complete-suite command is confirmed for the current development environment. Additional commands will be documented when later test modules and coverage tooling are added.
+
+Release dependency auditing uses PyPA `pip-audit` from a separate tool environment:
+
+```bash
+python -m pip_audit -r requirements.txt
+python -m pip_audit -r requirements-dev.txt
+```
+
+The validated tool version, latest result, and audit limitations are recorded in `RELEASE_READINESS.md`.

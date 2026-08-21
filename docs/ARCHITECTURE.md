@@ -125,10 +125,18 @@ An XLSX worksheet with none of the required columns is auxiliary: it is skipped 
 
 Structural and operational failures include missing input directories, no supported or usable sources, partial required schemas, reserved-column collisions, unreadable or malformed files, unrepresentable output data, and failed report publication. They are logged clearly, prevent a successful run, and produce a non-zero exit status. They must not be converted into ordinary invalid rows or hidden behind an apparently complete or empty report. Unexpected programming errors are not converted into operational success or silently coerced output.
 
+## Filesystem Boundaries
+
+`data/input/` is a trusted local operator directory. Discovery rejects symlinks observed during normal processing, but the Version 1 path-based workflow does not defend against a concurrent local attacker replacing entries between inspection and opening. Operators must prevent untrusted writes during a run.
+
+Report publication builds and validates a temporary workbook in the output directory and then calls `os.replace`. A successful replacement is atomic when provided by the filesystem contract, so an expected partial destination is not published. Version 1 does not claim durability against power loss, kernel crash, or physical storage failure, and abrupt termination may leave a temporary file.
+
 ## Dependencies
 
 - `defusedxml` for protected XML parsing within openpyxl input handling.
 - `openpyxl` for native Excel values, multi-worksheet XLSX processing, and workbook output.
 - `pytest` as a development dependency for automated tests.
+
+The validated Version 1 environment and dependency-audit procedure are recorded in `RELEASE_READINESS.md`.
 
 The implemented pipeline does not require `pandas`. It uses the standard library for paths, logging, `Decimal`, dataclasses, temporary files, ZIP-safe text preservation, and atomic replacement.
