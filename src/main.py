@@ -11,6 +11,7 @@ from src.processor import (
     load_supported_files,
     process_records,
 )
+from src.summary import calculate_summary
 
 
 LOGGER = logging.getLogger(__name__)
@@ -38,6 +39,16 @@ def run(input_dir: Path = DEFAULT_INPUT_DIR) -> int:
             len(result.valid_records),
             len(result.invalid_records),
             len(result.duplicate_records),
+        )
+        summary = calculate_summary(result)
+        LOGGER.info(
+            "Summary: %d total, %d valid, %d invalid, %d duplicate, "
+            "paid amount %s.",
+            summary.total_records,
+            summary.valid_records,
+            summary.invalid_records,
+            summary.duplicate_records,
+            summary.total_paid_amount,
         )
     except StructuralInputError as error:
         LOGGER.error("Input processing failed: %s", error)

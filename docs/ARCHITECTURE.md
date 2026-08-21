@@ -1,6 +1,6 @@
 # Architecture
 
-The initial architecture is approved and partially implemented. CSV and XLSX discovery and structural loading, record normalization, row-level validation, duplicate detection, and record classification are implemented; later pipeline stages remain planned. The architecture uses the existing modules and avoids unnecessary layers or global mutable state.
+The initial architecture is approved and partially implemented. CSV and XLSX discovery and structural loading, record normalization, row-level validation, duplicate detection, record classification, and summary calculation are implemented; report generation remains planned. The architecture uses focused modules and avoids unnecessary layers or global mutable state.
 
 ## Processing Pipeline
 
@@ -68,6 +68,14 @@ A structural or operational failure stops successful publication and results in 
 - Preserve all relevant validation errors for a record instead of stopping at the first error.
 - Keep row validation independent from structural source checks and report formatting.
 
+### `src/summary.py`
+
+- Aggregate an existing `ProcessingResult` without repeating normalization, validation, or duplicate detection.
+- Report total, valid, invalid, and duplicate record counts with intentionally overlapping invalid and duplicate classifications.
+- Calculate total paid amount from valid, unique records normalized to `status == "paid"`.
+- Use `Decimal` exclusively for monetary arithmetic and preserve exact two-place results for very large aggregates.
+- Return an immutable summary without modifying processed records or their classification projections.
+
 ### `src/exporter.py`
 
 - Generate the required workbook and worksheets.
@@ -86,7 +94,7 @@ Invalid and duplicate are independent attributes. A record may belong to both re
 
 Extra input columns remain associated with their records through normal output. Normalized values are the normal processing and report values; full copies of original fields are not required because source metadata identifies the original record.
 
-Small dataclasses represent validation errors, processed records, and the processing result. Valid, invalid, and duplicate projections reference the same processed records so overlapping classifications remain consistent. Future summary values, source errors, and run metadata can extend the result when their pipeline stages are implemented. The processing timestamp belongs to run metadata rather than individual rows.
+Small dataclasses represent validation errors, processed records, the processing result, and its independently calculated summary. Valid, invalid, and duplicate projections reference the same processed records so overlapping classifications remain consistent. The summary contains only the approved counts and paid total, while source errors and run metadata remain separate concerns. The processing timestamp belongs to run metadata rather than individual rows.
 
 ## Traceability
 
