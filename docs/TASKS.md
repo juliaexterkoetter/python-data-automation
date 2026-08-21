@@ -6,10 +6,9 @@ None.
 
 ## Planned
 
-1. Create representative demonstration input data.
-2. Validate final publication materials and anonymized examples.
-3. Complete the presentation-oriented README content.
-4. Perform the manual Microsoft Excel smoke test.
+1. Perform the manual Microsoft Excel smoke test.
+2. Capture the approved screenshots from the real workbook.
+3. Publish the prepared repository, LinkedIn, and Upwork presentation material as appropriate.
 
 ## Completed
 
@@ -43,3 +42,6 @@ None.
 - Approved and documented release-readiness decisions D64–D66.
 - Pinned the validated direct runtime and development dependencies.
 - Documented the dependency-audit procedure and result, atomicity-versus-durability boundary, trusted input directory, residual TOCTOU risk, and manual Excel smoke-test checklist.
+- Added and programmatically validated a fully fictitious mixed CSV/XLSX demonstration dataset.
+- Added a dedicated demo runner and regression test for documented summary, classification, traceability, and formula-safety expectations.
+- Completed the portfolio-oriented README, LinkedIn and Upwork copy, GitHub presentation suggestions, and real-screenshot plan.

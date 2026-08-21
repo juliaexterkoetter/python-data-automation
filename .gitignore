@@ -4,6 +4,8 @@ __pycache__/
 .env
 data/output/*
 !data/output/.gitkeep
+data/demo/output/*
+!data/demo/output/.gitkeep
 .pytest_cache/
 .coverage
 htmlcov/
