@@ -7,7 +7,7 @@ None.
 ## Planned
 
 1. Perform the manual Microsoft Excel smoke test.
-2. Capture the approved screenshots from the real workbook.
+2. Optionally capture the separate manual Excel smoke-test evidence from the real workbook.
 3. Publish the prepared repository, LinkedIn, and Upwork presentation material as appropriate.
 
 ## Completed
@@ -45,3 +45,4 @@ None.
 - Added and programmatically validated a fully fictitious mixed CSV/XLSX demonstration dataset.
 - Added a dedicated demo runner and regression test for documented summary, classification, traceability, and formula-safety expectations.
 - Completed the portfolio-oriented README, LinkedIn and Upwork copy, GitHub presentation suggestions, and real-screenshot plan.
+- Added four reproducible programmatic portfolio renderings derived from the real demonstration workbook, with deterministic content validation independent from the manual Excel evidence plan.
