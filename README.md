@@ -1,6 +1,10 @@
 # Python Sales Data Automation
 
-A defensive Python workflow that consolidates sales records from CSV and Excel, validates and classifies every record, and publishes an auditable Excel report.
+![Tests](https://github.com/juliaexterkoetter/python-data-automation/actions/workflows/tests.yml/badge.svg?branch=main)
+
+Python automation that consolidates CSV and Excel sales data, validates records, detects duplicates, preserves source traceability, and generates structured Excel reports.
+
+![Sales data processing summary showing total, valid, invalid, duplicate records and paid amount.](portfolio/screenshots/01-summary.png)
 
 ## What problem does this solve?
 
@@ -94,9 +98,29 @@ The repository includes a small, fully fictitious mixed-format scenario under `d
 
 The generated workbook is written to `data/demo/output/sales_report.xlsx`. Expected counts and records are documented in [the demo guide](data/demo/README.md). Generated output is intentionally ignored by Git.
 
-## Portfolio renderings
+## Demo results
 
-The repository includes four reproducible presentation renderings under `portfolio/screenshots/`. They are generated programmatically from the real demonstration workbook; they are not screenshots of the Microsoft Excel interface and do not replace the pending manual Excel smoke test.
+These programmatic renderings are based on the real demonstration workbook and its fully fictitious data. They provide a reproducible view of the report content without representing the Microsoft Excel interface.
+
+### Valid Records
+
+Shows normalized records and source-level traceability.
+
+![Valid sales records with normalized values and source-level traceability.](portfolio/screenshots/02-valid-records.png)
+
+### Invalid Records
+
+Shows rejected records retained with explicit validation feedback.
+
+![Invalid sales records retained with explicit validation feedback.](portfolio/screenshots/03-invalid-records.png)
+
+### Duplicates
+
+Shows duplicate detection without silently discarding repeated records.
+
+![Duplicate sales records retained for review with source traceability.](portfolio/screenshots/04-duplicates.png)
+
+All four presentation assets live under `portfolio/screenshots/` and can be reproduced from the demo workbook:
 
 ```bash
 .venv/bin/python -m pip install -r requirements-portfolio.txt
@@ -118,9 +142,11 @@ Do not add the generated archive to the repository.
 
 ## Tests
 
+GitHub Actions runs the project checks on Python 3.14.4, matching the validated local interpreter. The workflow installs the pinned development requirements and executes dependency, test, bytecode-compilation, and repository-diff checks.
+
 ```bash
 .venv/bin/python -m pytest
-.venv/bin/python -m compileall src tests
+.venv/bin/python -m compileall src tests scripts
 .venv/bin/python -m pip check
 git diff --check
 ```
